@@ -25,9 +25,13 @@ jobs:
       - run: ./scripts/build-windows-installer.ps1
       - run: |
           $installer = Get-Item "dist/RhinoMCP-Windows-Setup-*.exe"
-          Get-FileHash $installer.FullName -Algorithm SHA256 |
-            ForEach-Object { "$($_.Hash.ToLower())  $($installer.Name)" } |
-            Set-Content "dist/$($installer.Name).sha256"
+          $hash = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLower()
+          $checksum = Join-Path "dist" "$($installer.Name).sha256"
+          [IO.File]::WriteAllText(
+            $checksum,
+            "$hash  $($installer.Name)`n",
+            [Text.UTF8Encoding]::new($false)
+          )
       - uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
