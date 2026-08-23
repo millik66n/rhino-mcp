@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -157,25 +158,39 @@ def command_status(as_json: bool) -> int:
     return _print_checks(False)
 
 
-def _latest_wheel_url() -> str:
-    request = urllib.request.Request(RELEASE_API, headers={"User-Agent": "rhino-mcp"})
-    with urllib.request.urlopen(request, timeout=10) as response:
-        release = json.load(response)
-    version = str(release["tag_name"]).removeprefix("v")
-    expected = f"rhino_mcp-{version}-py3-none-any.whl"
-    for asset in release.get("assets", []):
-        if asset.get("name") == expected:
-            return str(asset["browser_download_url"])
-    raise RuntimeError(f"Latest release does not contain {expected}")
+def _latest_release_tag() -> str:
+    tag = ""
+    gh = shutil.which("gh")
+    if gh:
+        result = subprocess.run(
+            [gh, "api", "repos/millik66n/rhino-mcp/releases/latest", "--jq", ".tag_name"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            tag = result.stdout.strip()
+    if not tag:
+        request = urllib.request.Request(RELEASE_API, headers={"User-Agent": "rhino-mcp"})
+        with urllib.request.urlopen(request, timeout=10) as response:
+            tag = str(json.load(response)["tag_name"])
+    if not re.fullmatch(r"v?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?", tag):
+        raise RuntimeError("Latest release returned an invalid version tag")
+    return tag
+
+
+def _latest_package_source() -> str:
+    tag = _latest_release_tag()
+    return f"git+https://github.com/millik66n/rhino-mcp.git@{tag}"
 
 
 def command_update() -> int:
-    wheel = _latest_wheel_url()
+    source = _latest_package_source()
     uv = shutil.which("uv")
     if uv:
-        command = [uv, "tool", "install", "--force", wheel]
+        command = [uv, "tool", "install", "--force", source]
     else:
-        command = [sys.executable, "-m", "pip", "install", "--upgrade", wheel]
+        command = [sys.executable, "-m", "pip", "install", "--upgrade", source]
     print("Running:", " ".join(command))
     result = subprocess.run(command, check=False)
     if result.returncode == 0:

@@ -8,7 +8,7 @@
     <TargetExt>.rhp</TargetExt>
     <AssemblyName>RhinoMCP</AssemblyName>
     <RootNamespace>RhinoMCP</RootNamespace>
-    <Version>0.2.1</Version>
+    <Version>0.2.2</Version>
     <Title>Rhino MCP</Title>
     <Description>Automatic Rhino bridge and status panel for AI clients.</Description>
   </PropertyGroup>

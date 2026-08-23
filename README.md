@@ -40,7 +40,7 @@ Before the PyPI listing is enabled, install the tagged package directly without
 cloning:
 
 ```sh
-uvx --from "git+https://github.com/millik66n/rhino-mcp.git@v0.2.1" rhino-mcp setup
+uvx --from "git+https://github.com/millik66n/rhino-mcp.git@v0.2.2" rhino-mcp setup
 ```
 
 Setup detects installed clients, lets you choose one, writes its MCP entry safely,
