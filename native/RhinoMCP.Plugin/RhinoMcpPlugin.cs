@@ -20,21 +20,19 @@ public sealed class RhinoMcpPlugin : PlugIn
         SceneChangeTracker.Start();
         RhinoBridgeService.Instance.Start(UserSettings.RhinoPort);
         BridgeLog.Write("Rhino bridge started automatically.");
-        if (!Settings.GetBool("panel_introduced", false))
-            RhinoApp.Idle += OpenPanelOnce;
+        RhinoApp.Idle += OpenPanelOnStartup;
         return LoadReturnCode.Success;
     }
 
-    private void OpenPanelOnce(object? sender, EventArgs args)
+    private void OpenPanelOnStartup(object? sender, EventArgs args)
     {
-        RhinoApp.Idle -= OpenPanelOnce;
+        RhinoApp.Idle -= OpenPanelOnStartup;
         Panels.OpenPanel(RhinoMcpPanel.PanelId);
-        Settings.SetBool("panel_introduced", true);
     }
 
     protected override void OnShutdown()
     {
-        RhinoApp.Idle -= OpenPanelOnce;
+        RhinoApp.Idle -= OpenPanelOnStartup;
         SceneChangeTracker.Stop();
         RhinoBridgeService.Instance.Dispose();
         base.OnShutdown();

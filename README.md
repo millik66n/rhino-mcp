@@ -33,7 +33,7 @@ installer.
 For managed or silent deployment, the same download supports:
 
 ```powershell
-.\RhinoMCP-Windows-Setup-0.3.1.exe /CLIENT=codex /SILENT
+.\RhinoMCP-Windows-Setup-0.3.2.exe /CLIENT=codex /SILENT
 ```
 
 Valid client values are `codex`, `claude`, and `cursor`. Restart the selected AI
@@ -42,8 +42,14 @@ enabled.
 
 ## What appears in Rhino
 
-Run the `RhinoMCP` command once to show or hide the dockable **Rhino MCP** panel.
-It fits into Rhino's normal panel/header strip and shows:
+The dockable **Rhino MCP** panel opens automatically every time Rhino launches.
+It remains visible until the user hides it, stays hidden for the rest of that
+session, and appears again on the next Rhino launch. Run the `RhinoMCP` command
+at any time to show or hide it manually.
+
+The panel fits into Rhino's normal panel/header strip. Its headline shows
+**Connected — ready to prompt Rhino**, **Rhino MCP is running — waiting for the
+AI client**, or an actionable stopped/not-configured message. It also shows:
 
 - MCP server connected or waiting
 - Rhino bridge connected or stopped

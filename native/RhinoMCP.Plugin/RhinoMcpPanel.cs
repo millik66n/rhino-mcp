@@ -9,6 +9,7 @@ namespace RhinoMCP;
 [Guid("6A8B5410-F94F-45DC-A95C-F43A2464BB87")]
 public sealed class RhinoMcpPanel : Panel, IPanel
 {
+    private readonly Label _overall = new() { Font = new Font(SystemFont.Bold, 16) };
     private readonly Label _server = new();
     private readonly Label _rhino = new();
     private readonly Label _grasshopper = new();
@@ -45,6 +46,7 @@ public sealed class RhinoMcpPanel : Panel, IPanel
         DynamicLayout layout = new() { Padding = 14, DefaultSpacing = new Size(8, 8) };
         layout.AddRow(new Label { Text = "RHINO MCP", Font = new Font(SystemFont.Bold, 15) });
         layout.AddRow(new Label { Text = "Prompt Rhino from Codex, Claude, or Cursor." });
+        layout.AddRow(_overall);
         layout.AddRow(new Label { Text = "Connection" });
         layout.AddRow(new Label { Text = "MCP server" }, _server);
         layout.AddRow(new Label { Text = "Rhino bridge" }, _rhino);
@@ -87,15 +89,40 @@ public sealed class RhinoMcpPanel : Panel, IPanel
 
     private void RefreshStatus()
     {
-        SetStatus(_server, RhinoBridgeService.Instance.ClientCount > 0,
+        bool bridgeRunning = RhinoBridgeService.Instance.Running;
+        bool clientConnected = RhinoBridgeService.Instance.ClientCount > 0;
+        SetOverallStatus(bridgeRunning, clientConnected);
+        SetStatus(_server, clientConnected,
             "Connected", "Waiting for AI client");
-        SetStatus(_rhino, RhinoBridgeService.Instance.Running, "Connected", "Stopped");
+        SetStatus(_rhino, bridgeRunning, "Connected", "Stopped");
         SetStatus(_grasshopper, _grasshopperAvailable, "Available", "Not running");
         _client.Text = $"{UserSettings.Client} · {UserSettings.Profile}";
         _ports.Text = $"Rhino {UserSettings.RhinoPort} · GH {UserSettings.GrasshopperPort}";
         _logs.Text = BridgeLog.Text;
         _logs.CaretIndex = _logs.Text.Length;
         ProbeGrasshopper();
+    }
+
+    private void SetOverallStatus(bool bridgeRunning, bool clientConnected)
+    {
+        if (!bridgeRunning)
+        {
+            _overall.Text = "●  Rhino MCP stopped — click Restart";
+            _overall.TextColor = Color.FromArgb(194, 57, 52);
+        }
+        else if (clientConnected)
+        {
+            _overall.Text = "●  Connected — ready to prompt Rhino";
+            _overall.TextColor = Color.FromArgb(34, 160, 91);
+        }
+        else
+        {
+            string client = UserSettings.Client;
+            _overall.Text = client == "Not configured"
+                ? "●  Rhino MCP is running — AI client not configured"
+                : $"●  Rhino MCP is running — waiting for {client}";
+            _overall.TextColor = Color.FromArgb(205, 132, 27);
+        }
     }
 
     private void ProbeGrasshopper()
@@ -119,8 +146,13 @@ public sealed class RhinoMcpPanel : Panel, IPanel
 
     private void OnLogChanged() => Rhino.RhinoApp.InvokeOnUiThread((Action)RefreshStatus);
 
-    public void PanelShown(uint documentSerialNumber, ShowPanelReason reason) => RefreshStatus();
-    public void PanelHidden(uint documentSerialNumber, ShowPanelReason reason) { }
+    public void PanelShown(uint documentSerialNumber, ShowPanelReason reason)
+    {
+        _timer.Start();
+        RefreshStatus();
+    }
+
+    public void PanelHidden(uint documentSerialNumber, ShowPanelReason reason) => _timer.Stop();
 
     public void PanelClosing(uint documentSerialNumber, bool onCloseDocument)
     {
