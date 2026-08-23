@@ -122,7 +122,7 @@ def run_doctor(settings: Settings | None = None) -> list[Check]:
     finally:
         grasshopper.close()
 
-    launcher = shutil.which("uvx") or shutil.which("rhino-mcp") or sys.executable
+    launcher = shutil.which("rhino-mcp") or shutil.which("uvx") or sys.executable
     checks.append(Check("Server launcher", "pass", launcher, True))
     return checks
 

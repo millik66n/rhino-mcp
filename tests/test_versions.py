@@ -10,3 +10,10 @@ def test_python_and_yak_versions_stay_in_sync():
     match = re.search(r"^version:\s*(\S+)$", manifest, re.MULTILINE)
     assert match
     assert match.group(1) == __version__
+
+    pyproject = (root / "pyproject.toml").read_text()
+    assert re.search(r'^version = "' + re.escape(__version__) + r'"$', pyproject, re.MULTILINE)
+
+    for project in ("RhinoMCP.Plugin", "RhinoMCP.Grasshopper"):
+        csproj = next((root / "native" / project).glob("*.csproj")).read_text()
+        assert f"<Version>{__version__}</Version>" in csproj

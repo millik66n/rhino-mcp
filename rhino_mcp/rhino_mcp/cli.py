@@ -7,6 +7,7 @@ import json
 import shutil
 import subprocess
 import sys
+import urllib.request
 
 from . import __version__
 from .clients import (
@@ -20,6 +21,7 @@ from .config import VALID_PROFILES, config_path, load_settings, save_settings
 from .diagnostics import checks_as_dict, run_doctor
 
 MARKS = {"pass": "PASS", "warn": "WAIT", "fail": "FAIL"}
+RELEASE_API = "https://api.github.com/repos/millik66n/rhino-mcp/releases/latest"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -155,14 +157,30 @@ def command_status(as_json: bool) -> int:
     return _print_checks(False)
 
 
+def _latest_wheel_url() -> str:
+    request = urllib.request.Request(RELEASE_API, headers={"User-Agent": "rhino-mcp"})
+    with urllib.request.urlopen(request, timeout=10) as response:
+        release = json.load(response)
+    version = str(release["tag_name"]).removeprefix("v")
+    expected = f"rhino_mcp-{version}-py3-none-any.whl"
+    for asset in release.get("assets", []):
+        if asset.get("name") == expected:
+            return str(asset["browser_download_url"])
+    raise RuntimeError(f"Latest release does not contain {expected}")
+
+
 def command_update() -> int:
+    wheel = _latest_wheel_url()
     uv = shutil.which("uv")
     if uv:
-        command = [uv, "tool", "upgrade", "rhino-mcp"]
+        command = [uv, "tool", "install", "--force", wheel]
     else:
-        command = [sys.executable, "-m", "pip", "install", "--upgrade", "rhino-mcp"]
+        command = [sys.executable, "-m", "pip", "install", "--upgrade", wheel]
     print("Running:", " ".join(command))
-    return subprocess.run(command, check=False).returncode
+    result = subprocess.run(command, check=False)
+    if result.returncode == 0:
+        print("Python server updated. Update the Rhino plug-in through PackageManager.")
+    return result.returncode
 
 
 def command_uninstall(args: argparse.Namespace) -> int:
