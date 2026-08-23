@@ -33,7 +33,7 @@ installer.
 For managed or silent deployment, the same download supports:
 
 ```powershell
-.\RhinoMCP-Windows-Setup-0.3.0.exe /CLIENT=codex /SILENT
+.\RhinoMCP-Windows-Setup-0.3.1.exe /CLIENT=codex /SILENT
 ```
 
 Valid client values are `codex`, `claude`, and `cursor`. Restart the selected AI

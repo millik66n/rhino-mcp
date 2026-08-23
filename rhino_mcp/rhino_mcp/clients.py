@@ -107,11 +107,31 @@ def _save_json(path: Path, value: dict[str, Any]) -> None:
 
 
 def _codex_executable() -> str | None:
-    return shutil.which("codex") or (
-        "/Applications/ChatGPT.app/Contents/Resources/codex"
-        if Path("/Applications/ChatGPT.app/Contents/Resources/codex").exists()
-        else None
-    )
+    executable = shutil.which("codex")
+    if executable:
+        return executable
+
+    if sys.platform == "win32":
+        # The Codex Windows desktop app keeps its CLI in a versioned private
+        # directory that Explorer-launched installers do not inherit on PATH.
+        # Search that stable app-owned root so desktop-only installations work
+        # without asking the user to install a second Codex CLI.
+        local_appdata = os.environ.get("LOCALAPPDATA")
+        if local_appdata:
+            bin_root = Path(local_appdata) / "OpenAI" / "Codex" / "bin"
+            try:
+                candidates = [path for path in bin_root.rglob("codex.exe") if path.is_file()]
+            except OSError:
+                candidates = []
+            if candidates:
+                try:
+                    newest = max(candidates, key=lambda path: path.stat().st_mtime_ns)
+                except OSError:
+                    newest = candidates[0]
+                return str(newest)
+
+    macos_app_cli = Path("/Applications/ChatGPT.app/Contents/Resources/codex")
+    return str(macos_app_cli) if macos_app_cli.exists() else None
 
 
 def configure_client(client: str, spec: ServerSpec | None = None) -> Path:

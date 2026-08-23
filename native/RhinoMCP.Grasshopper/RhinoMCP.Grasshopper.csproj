@@ -8,7 +8,7 @@
     <TargetExt>.gha</TargetExt>
     <AssemblyName>RhinoMCP.Grasshopper</AssemblyName>
     <RootNamespace>RhinoMCP.Grasshopper</RootNamespace>
-    <Version>0.3.0</Version>
+    <Version>0.3.1</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="RhinoCommon" Version="8.34.26223.11001" ExcludeAssets="runtime" />

@@ -63,3 +63,16 @@ def test_codex_uses_official_cli(tmp_path, monkeypatch):
         "rhino-mcp",
         "serve",
     ]
+
+
+def test_codex_finds_windows_desktop_app_cli(tmp_path, monkeypatch):
+    local_appdata = tmp_path / "AppData" / "Local"
+    desktop_cli = local_appdata / "OpenAI" / "Codex" / "bin" / "version-id" / "codex.exe"
+    desktop_cli.parent.mkdir(parents=True)
+    desktop_cli.touch()
+
+    monkeypatch.setenv("LOCALAPPDATA", str(local_appdata))
+    monkeypatch.setattr(clients.sys, "platform", "win32")
+    monkeypatch.setattr(clients.shutil, "which", lambda _: None)
+
+    assert clients._codex_executable() == str(desktop_cli)
