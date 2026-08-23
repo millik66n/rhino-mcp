@@ -48,7 +48,7 @@ internal static class UserSettings
         string[] names = clients.EnumerateArray()
             .Select(item => item.GetString())
             .Where(item => !string.IsNullOrWhiteSpace(item))
-            .Select(item => char.ToUpperInvariant(item![0]) + item[1..])
+            .Select(item => char.ToUpperInvariant(item![0]) + item.Substring(1))
             .ToArray();
         return names.Length == 0 ? "Not configured" : string.Join(", ", names);
     }

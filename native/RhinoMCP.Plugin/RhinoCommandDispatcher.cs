@@ -85,7 +85,7 @@ internal static class RhinoCommandDispatcher
     {
         RhinoDoc doc = Document;
         int page = Math.Max(1, GetInt(parameters, "page", 1));
-        int size = Math.Clamp(GetInt(parameters, "page_size", 100), 1, 500);
+        int size = Clamp(GetInt(parameters, "page_size", 100), 1, 500);
         string? layer = GetString(parameters, "layer");
         string? objectType = GetString(parameters, "object_type");
         HashSet<string>? fields = GetStringArray(parameters, "fields") is { Length: > 0 } requested
@@ -109,7 +109,7 @@ internal static class RhinoCommandDispatcher
         RhinoDoc doc = Document;
         long since = Math.Max(0, GetLong(parameters, "since_version", 0));
         int page = Math.Max(1, GetInt(parameters, "page", 1));
-        int size = Math.Clamp(GetInt(parameters, "page_size", 100), 1, 500);
+        int size = Clamp(GetInt(parameters, "page_size", 100), 1, 500);
         var changes = SceneChangeTracker.Since(since);
         object[] events = changes.Changed.Select(change =>
         {
@@ -408,7 +408,7 @@ internal static class RhinoCommandDispatcher
         RhinoDoc doc = Document;
         Rhino.Display.RhinoView view = doc.Views.ActiveView
             ?? throw new InvalidOperationException("No active Rhino viewport.");
-        int maximum = Math.Clamp(GetInt(parameters, "max_size", 1024), 256, 4096);
+        int maximum = Clamp(GetInt(parameters, "max_size", 1024), 256, 4096);
         int width = view.ActiveViewport.Size.Width;
         int height = view.ActiveViewport.Size.Height;
         double scale = Math.Min(1.0, maximum / (double)Math.Max(width, height));
@@ -425,7 +425,7 @@ internal static class RhinoCommandDispatcher
         Bitmap bitmap = capture.CaptureToBitmap(view)
             ?? throw new InvalidOperationException("Viewport capture failed.");
         string format = (GetString(parameters, "format") ?? "jpeg").ToLowerInvariant();
-        int quality = Math.Clamp(GetInt(parameters, "quality", 80), 20, 95);
+        int quality = Clamp(GetInt(parameters, "quality", 80), 20, 95);
         return new CapturedViewport(bitmap, format == "png" ? "png" : "jpeg",
             quality, capture.Width, capture.Height);
     }
@@ -515,7 +515,7 @@ internal static class RhinoCommandDispatcher
         if (!string.IsNullOrWhiteSpace(name))
             attributes.Name = name;
         if (!string.IsNullOrWhiteSpace(layer))
-            attributes.LayerIndex = EnsureLayer(doc, layer);
+            attributes.LayerIndex = EnsureLayer(doc, layer!);
         return attributes;
     }
 
@@ -698,6 +698,9 @@ internal static class RhinoCommandDispatcher
     private static bool GetBool(JsonElement parent, string name, bool fallback) =>
         parent.ValueKind == JsonValueKind.Object && parent.TryGetProperty(name, out JsonElement value)
             && value.ValueKind is JsonValueKind.True or JsonValueKind.False ? value.GetBoolean() : fallback;
+
+    private static int Clamp(int value, int minimum, int maximum) =>
+        Math.Min(maximum, Math.Max(minimum, value));
 
     private static JsonElement WithDryRun(JsonElement operation, bool dryRun)
     {

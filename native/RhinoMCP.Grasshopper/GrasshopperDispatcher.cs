@@ -23,7 +23,7 @@ internal static class GrasshopperDispatcher
         GH_Document document = Document;
         bool simplified = GetBool(parameters, "simplified", true);
         int page = Math.Max(1, GetInt(parameters, "page", 1));
-        int size = Math.Clamp(GetInt(parameters, "page_size", 100), 1, 500);
+        int size = Clamp(GetInt(parameters, "page_size", 100), 1, 500);
         IGH_DocumentObject[] all = document.Objects.ToArray();
         object[] items = all.Skip((page - 1) * size).Take(size)
             .Select(item => (object)Summary(item, simplified)).ToArray();
@@ -154,4 +154,7 @@ internal static class GrasshopperDispatcher
     private static bool GetBool(JsonElement parent, string name, bool fallback) =>
         parent.ValueKind == JsonValueKind.Object && parent.TryGetProperty(name, out JsonElement value)
             && value.ValueKind is JsonValueKind.True or JsonValueKind.False ? value.GetBoolean() : fallback;
+
+    private static int Clamp(int value, int minimum, int maximum) =>
+        Math.Min(maximum, Math.Max(minimum, value));
 }

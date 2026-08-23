@@ -5,7 +5,17 @@ namespace RhinoMCP;
 
 internal static class SceneChangeTracker
 {
-    internal sealed record Change(Guid Id, long Version);
+    internal sealed class Change
+    {
+        public Change(Guid id, long version)
+        {
+            Id = id;
+            Version = version;
+        }
+
+        public Guid Id { get; }
+        public long Version { get; }
+    }
     private static readonly object Sync = new();
     private static readonly Dictionary<Guid, long> Changed = new();
     private static readonly Dictionary<Guid, long> Deleted = new();

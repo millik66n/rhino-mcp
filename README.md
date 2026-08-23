@@ -14,7 +14,8 @@ command, or hand-edited MCP configuration is part of normal setup.
 
 ## Install
 
-Requires Rhino 8 and the AI client you want to use. Close Rhino, download the
+Requires Rhino 8.0 or newer and the AI client you want to use. Rhino 8.1 is
+supported without updating Rhino. Close Rhino, download the
 single `RhinoMCP-Windows-Setup-*.exe` file from the
 [latest release](https://github.com/millik66n/rhino-mcp/releases/latest), and
 double-click it. The installer asks for the AI client and then automatically:
@@ -26,14 +27,15 @@ double-click it. The installer asks for the AI client and then automatically:
 - runs the doctor checks; and
 - adds a normal entry to Windows **Installed apps** for clean removal.
 
-The installer does not download dependencies and Rhino MCP never updates itself.
+The installer does not need Rhino to be online, does not download dependencies,
+and Rhino MCP never updates itself.
 Installing a different version always requires deliberately running another
 installer.
 
 For managed or silent deployment, the same download supports:
 
 ```powershell
-.\RhinoMCP-Windows-Setup-0.3.2.exe /CLIENT=codex /SILENT
+.\RhinoMCP-Windows-Setup-0.3.3.exe /CLIENT=codex /SILENT
 ```
 
 Valid client values are `codex`, `claude`, and `cursor`. Restart the selected AI
@@ -58,6 +60,10 @@ AI client**, or an actionable stopped/not-configured message. It also shows:
 - Rhino and Grasshopper ports
 - recent logs
 - **Restart**, **Create test cube**, and **Copy doctor command** buttons
+
+The installer includes both Rhino 8 runtime builds. Rhino automatically uses
+`net7.0` in its normal runtime or `net48` if Rhino is configured for the legacy
+.NET Framework runtime; the user does not need to choose or configure this.
 
 The connection test creates a one-unit cube, verifies it, and removes it. If
 cleanup is disabled, the test cube is left in the document.

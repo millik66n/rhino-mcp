@@ -93,7 +93,8 @@ internal sealed class GrasshopperBridgeService : IDisposable
         context.Response.ContentType = "application/json";
         context.Response.ContentLength64 = body.Length;
         context.Response.KeepAlive = true;
-        await context.Response.OutputStream.WriteAsync(body, cancellation).ConfigureAwait(false);
+        await context.Response.OutputStream.WriteAsync(
+            body, 0, body.Length, cancellation).ConfigureAwait(false);
         context.Response.Close();
     }
 

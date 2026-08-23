@@ -33,13 +33,19 @@ try {
     & dotnet build "native\RhinoMCP.Grasshopper\RhinoMCP.Grasshopper.csproj" -c $Configuration
     if ($LASTEXITCODE -ne 0) { throw "Grasshopper add-on build failed." }
 
-    $yakFramework = Join-Path $yakStage "net7.0"
-    New-Item -ItemType Directory -Path $yakFramework -Force | Out-Null
-    Copy-Item "native\RhinoMCP.Plugin\bin\$Configuration\net7.0\RhinoMCP.rhp" $yakFramework
-    Copy-Item "native\RhinoMCP.Grasshopper\bin\$Configuration\net7.0\RhinoMCP.Grasshopper.gha" $yakFramework
+    $yakNet48 = Join-Path $yakStage "net48"
+    $yakNet7 = Join-Path $yakStage "net7.0"
+    New-Item -ItemType Directory -Path $yakNet48, $yakNet7 -Force | Out-Null
+
+    Copy-Item "native\RhinoMCP.Plugin\bin\$Configuration\net7.0\RhinoMCP.rhp" $yakNet7
+    Copy-Item "native\RhinoMCP.Grasshopper\bin\$Configuration\net7.0\RhinoMCP.Grasshopper.gha" $yakNet7
+
+    Copy-Item "native\RhinoMCP.Plugin\bin\$Configuration\net48\RhinoMCP.rhp" $yakNet48
+    Copy-Item "native\RhinoMCP.Grasshopper\bin\$Configuration\net48\RhinoMCP.Grasshopper.gha" $yakNet48
+    Copy-Item "native\RhinoMCP.Plugin\bin\$Configuration\net48\*.dll" $yakNet48
     Copy-Item "native\package\manifest.yml" $yakStage
 
-    $yakZip = Join-Path $payloadRoot "rhino-mcp-easy-$version-rh8_0-any.zip"
+    $yakZip = Join-Path $payloadRoot "rhino-mcp-easy-$version-rh8_0-win.zip"
     $yakPackage = [System.IO.Path]::ChangeExtension($yakZip, ".yak")
     Compress-Archive -Path (Join-Path $yakStage "*") -DestinationPath $yakZip -CompressionLevel Optimal
     Move-Item -LiteralPath $yakZip -Destination $yakPackage

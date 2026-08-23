@@ -11,7 +11,9 @@ Build both assemblies and a Package Manager `.yak` archive:
 ./scripts/build-yak.sh
 ```
 
-The resulting package is written to `dist/` with both assemblies under `net7.0/`.
+The resulting package is written to `dist/` with both assemblies under `net7.0/`
+and `net48/`. Both builds target the Rhino 8.0 SDK, so the same package works on
+older Rhino 8 installations (including 8.1) and with either Rhino runtime.
 
 After the package owner has logged in to the Rhino package server, publish it with:
 

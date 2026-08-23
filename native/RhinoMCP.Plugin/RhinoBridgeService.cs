@@ -68,7 +68,7 @@ internal sealed class RhinoBridgeService : IDisposable
         {
             try
             {
-                TcpClient client = await listener.AcceptTcpClientAsync(cancellation).ConfigureAwait(false);
+                TcpClient client = await listener.AcceptTcpClientAsync().ConfigureAwait(false);
                 client.NoDelay = true;
                 _ = HandleClientAsync(client, cancellation);
             }
@@ -91,7 +91,7 @@ internal sealed class RhinoBridgeService : IDisposable
         try
         {
             using (client)
-            await using (NetworkStream stream = client.GetStream())
+            using (NetworkStream stream = client.GetStream())
             {
                 while (!cancellation.IsCancellationRequested)
                 {
@@ -217,7 +217,8 @@ internal sealed class RhinoBridgeService : IDisposable
         int offset = 0;
         while (offset < buffer.Length)
         {
-            int read = await stream.ReadAsync(buffer.AsMemory(offset), cancellation).ConfigureAwait(false);
+            int read = await stream.ReadAsync(
+                buffer, offset, buffer.Length - offset, cancellation).ConfigureAwait(false);
             if (read == 0)
                 throw new EndOfStreamException();
             offset += read;
@@ -230,8 +231,8 @@ internal sealed class RhinoBridgeService : IDisposable
         byte[] body = JsonSerializer.SerializeToUtf8Bytes(value);
         byte[] header = new byte[4];
         BinaryPrimitives.WriteInt32BigEndian(header, body.Length);
-        await stream.WriteAsync(header, cancellation).ConfigureAwait(false);
-        await stream.WriteAsync(body, cancellation).ConfigureAwait(false);
+        await stream.WriteAsync(header, 0, header.Length, cancellation).ConfigureAwait(false);
+        await stream.WriteAsync(body, 0, body.Length, cancellation).ConfigureAwait(false);
         await stream.FlushAsync(cancellation).ConfigureAwait(false);
     }
 
