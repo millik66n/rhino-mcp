@@ -17,3 +17,6 @@ def test_python_and_yak_versions_stay_in_sync():
     for project in ("RhinoMCP.Plugin", "RhinoMCP.Grasshopper"):
         csproj = next((root / "native" / project).glob("*.csproj")).read_text()
         assert f"<Version>{__version__}</Version>" in csproj
+
+    installer = (root / "installer" / "RhinoMCP.iss").read_text()
+    assert f'#define AppVersion "{__version__}"' in installer

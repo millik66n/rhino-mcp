@@ -29,3 +29,15 @@ def test_update_installs_latest_release(monkeypatch):
 
     assert cli.command_update() == 0
     assert commands == [["/usr/bin/uv", "tool", "install", "--force", source]]
+
+
+def test_frozen_windows_bundle_does_not_self_update(monkeypatch, capsys):
+    monkeypatch.setattr(cli.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(
+        cli,
+        "_latest_package_source",
+        lambda: (_ for _ in ()).throw(AssertionError("must not contact GitHub")),
+    )
+
+    assert cli.command_update() == 0
+    assert "never updates automatically" in capsys.readouterr().out

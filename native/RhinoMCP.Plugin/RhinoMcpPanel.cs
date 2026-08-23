@@ -40,7 +40,7 @@ public sealed class RhinoMcpPanel : Panel, IPanel
         };
 
         Button doctor = new() { Text = "Copy doctor command" };
-        doctor.Click += (_, _) => Clipboard.Instance.Text = "rhino-mcp doctor";
+        doctor.Click += (_, _) => Clipboard.Instance.Text = DoctorCommand();
 
         DynamicLayout layout = new() { Padding = 14, DefaultSpacing = new Size(8, 8) };
         layout.AddRow(new Label { Text = "RHINO MCP", Font = new Font(SystemFont.Bold, 15) });
@@ -75,6 +75,14 @@ public sealed class RhinoMcpPanel : Panel, IPanel
         {
             return false;
         }
+    }
+
+    private static string DoctorCommand()
+    {
+        string installed = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Programs", "Rhino MCP", "server", "rhino-mcp.exe");
+        return File.Exists(installed) ? $"\"{installed}\" doctor" : "rhino-mcp doctor";
     }
 
     private void RefreshStatus()

@@ -1,6 +1,15 @@
 import json
+import sys
 
 from rhino_mcp import clients
+
+
+def test_frozen_windows_bundle_uses_itself_as_the_server(monkeypatch, tmp_path):
+    executable = tmp_path / "rhino-mcp.exe"
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", str(executable))
+
+    assert clients.server_spec() == clients.ServerSpec(str(executable.resolve()), ["serve"])
 
 
 def test_json_client_configuration_preserves_existing_keys(tmp_path, monkeypatch):

@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from . import __version__
 from .clients import CLIENTS, client_is_configured
 from .config import Settings, config_path, load_settings
 from .grasshopper import GrasshopperConnection
@@ -51,8 +52,14 @@ def _native_plugin() -> Path | None:
 
 def run_doctor(settings: Settings | None = None) -> list[Check]:
     settings = settings or load_settings()
+    frozen = bool(getattr(sys, "frozen", False))
     checks = [
-        Check("Python", "pass", platform.python_version(), True),
+        Check(
+            "MCP runtime",
+            "pass",
+            f"bundled {__version__}" if frozen else f"Python {platform.python_version()}",
+            True,
+        ),
         Check(
             "MCP SDK",
             "pass" if importlib.util.find_spec("mcp") else "fail",
@@ -91,7 +98,7 @@ def run_doctor(settings: Settings | None = None) -> list[Check]:
         Check(
             "Rhino plug-in",
             "pass" if plugin else "fail",
-            str(plugin) if plugin else "install Rhino MCP Easy from Rhino PackageManager",
+            str(plugin) if plugin else "run or repair the Rhino MCP Windows installer",
             True,
         )
     )

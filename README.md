@@ -2,59 +2,43 @@
 
 The low-friction Rhino and Grasshopper bridge for Codex, Claude, and Cursor.
 
-The target experience is deliberately short:
+The Windows experience is deliberately short:
 
-1. Install **Rhino MCP Easy** from Rhino Package Manager.
-2. Run `rhino-mcp setup` and choose Codex, Claude, or Cursor.
-3. Open Rhino and start prompting.
+1. Download and run **RhinoMCP-Windows-Setup**.
+2. Choose Codex, Claude, or Cursor.
+3. Open Rhino, open Grasshopper, and start prompting.
 
-No repository clone, Conda environment, Rhino Python script, Grasshopper file,
-Python-path change, or hand-edited MCP configuration is part of normal setup.
-
-> The source and release artifacts are ready. The Package Manager and PyPI names
-> become publicly searchable after their one-time registry publisher setup.
-> Until then, use the `.yak` and wheel attached to the GitHub release.
+No Rhino Package Manager, repository clone, Python installation, `uv`, Conda
+environment, Rhino Python script, Grasshopper file, Python-path change, terminal
+command, or hand-edited MCP configuration is part of normal setup.
 
 ## Install
 
-### 1. Rhino plug-in
+Requires Rhino 8 and the AI client you want to use. Close Rhino, download the
+single `RhinoMCP-Windows-Setup-*.exe` file from the
+[latest release](https://github.com/millik66n/rhino-mcp/releases/latest), and
+double-click it. The installer asks for the AI client and then automatically:
 
-In Rhino 8, open **PackageManager**, search for **Rhino MCP Easy**, and install it.
-Restart Rhino once. The plug-in and Grasshopper add-on then start automatically.
+- installs the Rhino and Grasshopper bridges using Rhino's bundled installer;
+- installs a self-contained MCP server with its complete runtime;
+- writes the Codex, Claude, or Cursor MCP entry safely;
+- selects the safe Grasshopper tool profile;
+- runs the doctor checks; and
+- adds a normal entry to Windows **Installed apps** for clean removal.
 
-For a release file, install the attached `rhino-mcp-easy-*.yak` package with Yak.
+The installer does not download dependencies and Rhino MCP never updates itself.
+Installing a different version always requires deliberately running another
+installer.
 
-### 2. AI client
+For managed or silent deployment, the same download supports:
 
-Run setup in an isolated environment (nothing is added to your active Python):
-
-```sh
-uvx rhino-mcp setup
+```powershell
+.\RhinoMCP-Windows-Setup-0.3.0.exe /CLIENT=codex /SILENT
 ```
 
-If you want the shorter maintenance commands shown below, install the CLI as a
-standalone tool with `uv tool install rhino-mcp`; it is still isolated from your
-Python projects.
-
-Before the PyPI listing is enabled, install the tagged package directly without
-cloning:
-
-```sh
-uvx --from "git+https://github.com/millik66n/rhino-mcp.git@v0.2.2" rhino-mcp setup
-```
-
-Setup detects installed clients, lets you choose one, writes its MCP entry safely,
-and defaults to the restricted **Basic** tool profile. You can also configure a
-client directly:
-
-```sh
-rhino-mcp config codex
-rhino-mcp config claude
-rhino-mcp config cursor
-```
-
-Restart the selected AI client, open Rhino, and prompt. Codex users can run `/mcp`
-to confirm that `rhino-mcp` is enabled.
+Valid client values are `codex`, `claude`, and `cursor`. Restart the selected AI
+client after setup. Codex users can run `/mcp` to confirm that `rhino-mcp` is
+enabled.
 
 ## What appears in Rhino
 
@@ -72,7 +56,10 @@ It fits into Rhino's normal panel/header strip and shows:
 The connection test creates a one-unit cube, verifies it, and removes it. If
 cleanup is disabled, the test cube is left in the document.
 
-## Commands
+## Advanced commands
+
+The Rhino panel's **Copy doctor command** button copies the correct full path for
+installer users. Source and Python-package installations can use:
 
 ```text
 rhino-mcp setup [codex|claude|cursor]
@@ -178,8 +165,19 @@ Rhino 8 plug-in and Package Manager archive:
 ```
 
 The script builds `RhinoMCP.rhp`, `RhinoMCP.Grasshopper.gha`, and a `.yak` under
-`dist/`. CI builds and checks both native projects plus the wheel and source
-distribution. Tagged releases attach all three installable artifacts.
+`dist/`.
+
+Complete Windows installer (run in PowerShell on Windows):
+
+```powershell
+python -m pip install -e ".[dev]" "pyinstaller==6.22.2"
+choco install innosetup --yes
+.\scripts\build-windows-installer.ps1
+```
+
+CI compiles and smoke-tests the bundled Windows executable and the single-file
+installer. Tagged releases attach the installer, its SHA-256 checksum, and the
+manual developer artifacts.
 
 ## Architecture
 
@@ -187,7 +185,7 @@ distribution. Tagged releases attach all three installable artifacts.
 Codex / Claude / Cursor
         │ MCP stdio
         ▼
-rhino-mcp Python package
+bundled rhino-mcp.exe
         │ framed, persistent localhost TCP
         ▼
 RhinoMCP.rhp ── Rhino document + dockable panel

@@ -185,6 +185,12 @@ def _latest_package_source() -> str:
 
 
 def command_update() -> int:
+    if getattr(sys, "frozen", False):
+        print(
+            "This self-contained Windows installation never updates automatically.\n"
+            "To change versions, download and run a different Rhino MCP installer."
+        )
+        return 0
     source = _latest_package_source()
     uv = shutil.which("uv")
     if uv:
@@ -194,7 +200,7 @@ def command_update() -> int:
     print("Running:", " ".join(command))
     result = subprocess.run(command, check=False)
     if result.returncode == 0:
-        print("Python server updated. Update the Rhino plug-in through PackageManager.")
+        print("Python server updated. Install the matching Yak package or Windows installer.")
     return result.returncode
 
 
@@ -210,7 +216,10 @@ def command_uninstall(args: argparse.Namespace) -> int:
     if args.all and config_path().exists():
         config_path().unlink()
         print(f"Removed settings {config_path()}")
-    print("Remove the Rhino plug-in from Rhino Package Manager to finish uninstalling.")
+    if getattr(sys, "frozen", False):
+        print("The Windows uninstaller removes the Rhino and Grasshopper plug-ins.")
+    else:
+        print("Remove the Rhino plug-in with Yak or the Windows installer to finish.")
     return 0
 
 

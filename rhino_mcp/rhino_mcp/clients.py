@@ -33,6 +33,11 @@ def server_spec() -> ServerSpec:
     override = os.environ.get("RHINO_MCP_COMMAND")
     if override:
         return ServerSpec(override, ["serve"])
+    # The Windows installer bundles the complete Python application as a
+    # PyInstaller executable.  Reusing that executable keeps the configured MCP
+    # entry self-contained and avoids Python, uv, Git, and network dependencies.
+    if getattr(sys, "frozen", False):
+        return ServerSpec(str(Path(sys.executable).resolve()), ["serve"])
     executable = shutil.which("rhino-mcp")
     resolved = str(Path(executable).resolve()) if executable else ""
     if executable and not any(part in resolved for part in ("/.cache/uv/", "/tmp/")):
