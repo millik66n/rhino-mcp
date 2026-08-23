@@ -1,0 +1,14 @@
+---
+name: Rhino-MCP-Easy
+version: 0.2.0
+authors:
+- millik66n
+description: One-click Rhino and Grasshopper integration for Codex, Claude, and Cursor.
+url: https://github.com/millik66n/rhino-mcp
+keywords:
+- mcp
+- ai
+- codex
+- claude
+- cursor
+- grasshopper

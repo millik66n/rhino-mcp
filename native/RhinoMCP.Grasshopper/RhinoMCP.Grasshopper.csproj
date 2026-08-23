@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <LangVersion>11</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <TargetExt>.gha</TargetExt>
+    <AssemblyName>RhinoMCP.Grasshopper</AssemblyName>
+    <RootNamespace>RhinoMCP.Grasshopper</RootNamespace>
+    <Version>0.2.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="RhinoCommon" Version="8.34.26223.11001" ExcludeAssets="runtime" />
+    <PackageReference Include="Grasshopper" Version="8.34.26223.11001" ExcludeAssets="runtime" />
+  </ItemGroup>
+</Project>

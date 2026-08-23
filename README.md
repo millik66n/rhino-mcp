@@ -1,202 +1,202 @@
-# RhinoMCP - Rhino Model Context Protocol Integration
+# Rhino MCP
 
-RhinoMCP connects Rhino and Grasshopper to AI clients through the Model Context Protocol (MCP), enabling prompt-assisted 3D modeling, scene creation, and manipulation. (Inspired by [blender_mcp](https://github.com/ahujasid/blender-mcp).)
+The low-friction Rhino and Grasshopper bridge for Codex, Claude, and Cursor.
 
-## Features
+The target experience is deliberately short:
 
-#### Rhino
-- **Two-way communication**: Connect Claude AI to Rhino through a socket-based server
-- **Object manipulation and management**: Create and modify 3D objects in Rhino including metadata
-- **Layer management**: View and interact with Rhino layers
-- **Scene inspection**: Get detailed information about the current Rhino scene (incl. screencapture) 
-- **Code execution**: Run arbitrary Python code in Rhino from Claude
- 
-#### Grasshopper
-- **Code execution**: Run arbitrary Python code in Grasshopper from Claude - includes the generation of gh components
-- **Gh canvas inspection**: Get detailed information about your Grasshopper definition, including component graph and parameters
-- **Component management**: Update script components, modify parameters, and manage code references
-- **External code integration**: Link script components to external Python files for better code organization
-- **Real-time feedback**: Get component states, error messages, and runtime information
-- **Non-blocking communication**: Stable two-way communication via HTTP server
+1. Install **Rhino MCP Easy** from Rhino Package Manager.
+2. Run `rhino-mcp setup` and choose Codex, Claude, or Cursor.
+3. Open Rhino and start prompting.
 
-## Components
+No repository clone, Conda environment, Rhino Python script, Grasshopper file,
+Python-path change, or hand-edited MCP configuration is part of normal setup.
 
-The system consists of two main components:
+> The source and release artifacts are ready. The Package Manager and PyPI names
+> become publicly searchable after their one-time registry publisher setup.
+> Until then, use the `.yak` and wheel attached to the GitHub release.
 
-1. **Rhino-side Script (`rhino_mcp_client.py`)**: A Python script that runs inside Rhino to create a socket server that receives and executes commands
-2. **MCP Server (`rhino_mcp/server.py`)**: A Python server that implements the Model Context Protocol and connects to the Rhino script
+## Install
 
-## Installation
+### 1. Rhino plug-in
 
-### Prerequisites
+In Rhino 8, open **PackageManager**, search for **Rhino MCP Easy**, and install it.
+Restart Rhino once. The plug-in and Grasshopper add-on then start automatically.
 
-- Rhino 7 or newer
-- Python 3.10 or newer
-- Conda (for environment management)
+For a release file, install the attached `rhino-mcp-easy-*.yak` package with Yak.
 
-### Setting up the Python Environment
+### 2. AI client
 
-1. Create a new conda environment with Python 3.10:
-   ```bash
-   conda create -n rhino_mcp python=3.10
-   conda activate rhino_mcp
-   ```
+Run setup in an isolated environment (nothing is added to your active Python):
 
-2. Install the `uv` package manager:
-   ```bash
-   pip install uv
-   ```
-
-3. From the repository root, install the package in development mode:
-   ```bash
-   uv pip install -e .
-   ```
-
-### Installing the Rhino-side Script
-
-1. Open Rhino 7
-2. Open the Python Editor:
-   - Click on the "Tools" menu
-   - Select "Python Script" -> "Run.."
-   - Navigate to and select `rhino_mcp_client.py`
-4. The script will start automatically and you should see these messages in the Python Editor:
-   ```
-   RhinoMCP script loaded. Server started automatically.
-   To stop the server, run: stop_server()
-   ```
-
-### Running the MCP Server
-
-The MCP server will be started automatically by Claude Desktop using the configuration in `claude_desktop_config.json`. You don't need to start it manually.
-
-### Starting the Connection
-
-1. First, start the Rhino script:
-   - Open Rhino 7
-   - Open the Python Editor
-   - Open and run `rhino_mcp_client.py`
-   - Verify you see the startup messages in the Python Editor
-
-2. Then start Claude Desktop:
-   - It will automatically start the MCP server when needed
-   - The connection between Claude and Rhino will be established automatically
-
-### Managing the Connection
-
-- To stop the Rhino script server:
-  - In the Python Editor, type `stop_server()` and press Enter
-  - You should see "RhinoMCP server stopped" in the outputt
-
-### Claude Integration
-
-To integrate with Claude Desktop:
-
-1. Go to Claude Desktop > Settings > Developer > Edit Config 
-2. Open the `claude_desktop_config.json` file and add the following configuration:
-
-```json
-{
-    "mcpServers": {
-        "rhino": {
-            "command": "/Users/Joo/miniconda3/envs/rhino_mcp/bin/python",
-            "args": [
-                "-m", "rhino_mcp.server"
-            ]
-        }
-    }
-}
+```sh
+uvx rhino-mcp setup
 ```
 
-Make sure to:
-- Replace the Python path with the path to Python in your conda environment
-- Save the file and restart Claude Desktop
+If you want the shorter maintenance commands shown below, install the CLI as a
+standalone tool with `uv tool install rhino-mcp`; it is still isolated from your
+Python projects.
 
-### Cursor IDE Integration
+Before the PyPI listing is enabled, install the tagged package directly without
+cloning:
 
-Using cursor has the potential benifit that you can use it to organise your colelction of python scripts you use for ghpython components (especialyl when you use grasshoppers reference code functionality). Morover, you can utilize its codebase indexing features, add Rhino/Grasshopper SDK references and so on. 
-
-To integrate with Cursor IDE:
-
-1. Locate or create the file `~/.cursor/mcp.json` (in your home directory)
-2. Add the same configuration as used for Claude Desktop:
-
-```json
-{
-    "mcpServers": {
-        "rhino": {
-            "command": "/Users/Joo/miniconda3/envs/rhino_mcp/bin/python",
-            "args": [
-                "-m",
-                "rhino_mcp.server"
-            ]
-        }
-    }
-}
+```sh
+uvx --from "git+https://github.com/millik66n/rhino-mcp.git@v0.2.0" rhino-mcp setup
 ```
 
+Setup detects installed clients, lets you choose one, writes its MCP entry safely,
+and defaults to the restricted **Basic** tool profile. You can also configure a
+client directly:
 
-> **Important Note:** For both Claude Desktop and Cursor IDE, if you're using a conda environment, you must specify the full path to the Python interpreter as shown above. Using relative paths or commands like `python` or `uvx` might not work properly with conda environments.
+```sh
+rhino-mcp config codex
+rhino-mcp config claude
+rhino-mcp config cursor
+```
 
-### Grasshopper Integration
+Restart the selected AI client, open Rhino, and prompt. Codex users can run `/mcp`
+to confirm that `rhino-mcp` is enabled.
 
-The package includes enhanced Grasshopper integration:
+## What appears in Rhino
 
-1. Start the Grasshopper server component (in rhino_mcp/grasshopper_mcp_client.gh)
+Run the `RhinoMCP` command once to show or hide the dockable **Rhino MCP** panel.
+It fits into Rhino's normal panel/header strip and shows:
 
+- MCP server connected or waiting
+- Rhino bridge connected or stopped
+- Grasshopper available or not running
+- selected AI client and tool profile
+- Rhino and Grasshopper ports
+- recent logs
+- **Restart**, **Create test cube**, and **Copy doctor command** buttons
 
+The connection test creates a one-unit cube, verifies it, and removes it. If
+cleanup is disabled, the test cube is left in the document.
 
-Key features:
-- Non-blocking communication via HTTP
-- Support for external Python file references
-- error handling and feedback
+## Commands
 
+```text
+rhino-mcp setup [codex|claude|cursor]
+rhino-mcp doctor [--json]
+rhino-mcp status [--json]
+rhino-mcp update
+rhino-mcp uninstall [--all]
+rhino-mcp config [codex|claude|cursor]
+rhino-mcp config --profile basic|grasshopper|developer
+```
 
-### Example Commands
+`doctor` reports pass/fail/wait states for the package, settings, every AI client,
+Rhino, Grasshopper, and the server launcher. Rhino and Grasshopper being closed are
+shown as `WAIT`, with the exact next action, rather than as socket traces.
 
-Here are some examples of what you can ask Claude to do:
+## Tool profiles
 
-- "Get information about the current Rhino scene"
-- "Create a cube at the origin"
-- "Get all layers in the Rhino document"
-- "Execute this Python code in Rhino: ..."
-- "Update a Grasshopper script component with new code"
-- "Link a Grasshopper component to an external Python file"
-- "Get the current state of selected Grasshopper components"
+### Basic (default)
 
-## Troubleshooting
+The safe everyday set:
 
-- **Connection issues**: 
-  - Make sure the Rhino script is running (check Python Editor output)
-  - Verify port 9876 is not in use by another application
-  - Check that both Rhino and Claude Desktop are running
+- `rhino_status`
+- `get_scene_summary`
+- `list_layers`
+- `list_objects`
+- `get_scene_changes`
+- `create_geometry`
+- `modify_objects`
+- `delete_objects`
+- `organize_layers`
+- `batch_geometry`
+- `test_connection`
+- `capture_viewport`
 
-- **Script not starting**:
-  - Make sure you're using Rhino 7 or newer
-  - Check the Python Editor for any error messages
-  - Try closing and reopening the Python Editor
+### Grasshopper
 
-- **Package not found**: 
-  - Ensure you're in the correct directory and have installed the package in development mode
-  - Verify your conda environment is activated
+Adds paginated definition context, selected/object inspection, and recompute tools.
+The bundled `.gha` starts its bridge automatically when Grasshopper opens; there is
+no `.gh` definition or Python component to load.
 
-- **Python path issues**: 
-  - Verify that the Python path in `claude_desktop_config.json` matches your conda environment's Python path
-  - Make sure you're using the full path to the Python interpreter
+### Developer
 
-## Limitations
+Explicitly adds arbitrary Rhino and Grasshopper Python tools. They are absent from
+the Basic and Grasshopper tool schemas, so an AI client cannot discover or call
+them accidentally. Safe high-level operations are still preferred.
 
-- The `execute_rhino_code` and `execute_code_in_gh` tools allow running arbitrary Python code, which can be powerful but potentially dangerous. Use with caution.
-- Grasshopper integration requires the HTTP server component to be running
-- External code references in Grasshopper require careful file path management
-- This is a minimal implementation focused on basic functionality. Advanced features may require additional development.
+## Safe editing behavior
 
-## Extending
+- Every modifying request gets a named Rhino undo record.
+- A batch performs all operations in one transaction and redraws once.
+- Geometry and layer tools accept `dry_run: true` for validation and preview.
+- Deletes require explicit Rhino object IDs.
+- Read results are structured objects, not JSON encoded inside strings.
+- Object and Grasshopper lists are filtered and paginated.
+- `get_scene_changes` sends only additions, edits, and deletions since a supplied
+  scene version.
 
-To add new functionality, you need to:
+Example prompt:
 
-1. Add new command handlers and functions in `rhino_script.py` and the `RhinoMCPServer` class.
-2. Add corresponding MCP tools in `server.py` that include tool and arg descriptions
+```text
+Create a 10 × 8 × 3 box on a layer named Massing. Dry-run it first, then create it
+and show me a compressed viewport capture.
+```
+
+## Reliability and performance
+
+- 4-byte length-prefixed messages replace the old giant receive buffer.
+- Requests are read in bounded 64 KiB chunks with a 64 MiB hard limit.
+- Rhino TCP and Grasshopper HTTP connections are kept alive and reused.
+- A failed safe read reconnects once automatically.
+- Mutations are never retried blindly, preventing duplicate geometry.
+- Short-lived scene metadata is cached and invalidated after edits.
+- Scene changes and large documents are paginated instead of repeatedly returned
+  in full.
+- Grasshopper context is simplified by default.
+- View captures default to compressed JPEG with configurable size and quality.
+- Socket work and image encoding run away from Rhino's UI thread; only Rhino API
+  calls are marshalled onto it.
+- Tool descriptions and normal responses are intentionally compact to reduce model
+  token usage.
+
+Change image defaults with:
+
+```sh
+rhino-mcp config --image-size 1280 --image-quality 82
+```
+
+## Developer build
+
+Python package:
+
+```sh
+python -m venv .venv
+.venv/bin/pip install -e ".[dev]"
+.venv/bin/pytest -q
+python -m build
+```
+
+Rhino 8 plug-in and Package Manager archive:
+
+```sh
+./scripts/build-yak.sh Release
+```
+
+The script builds `RhinoMCP.rhp`, `RhinoMCP.Grasshopper.gha`, and a `.yak` under
+`dist/`. CI builds and checks both native projects plus the wheel and source
+distribution. Tagged releases attach all three installable artifacts.
+
+## Architecture
+
+```text
+Codex / Claude / Cursor
+        │ MCP stdio
+        ▼
+rhino-mcp Python package
+        │ framed, persistent localhost TCP
+        ▼
+RhinoMCP.rhp ── Rhino document + dockable panel
+        │
+        └── RhinoMCP.Grasshopper.gha (persistent localhost HTTP)
+```
+
+Both bridges bind only to `127.0.0.1`; they are not exposed to the network.
 
 ## License
 
-This project is open source and available under the MIT License. 
+MIT. This repository is standalone and has no upstream Git remote.
