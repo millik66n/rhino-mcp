@@ -95,7 +95,8 @@ class BridgeConnection:
             except OSError as exc:
                 self.close()
                 raise BridgeUnavailable(
-                    "Open Rhino and start Rhino MCP from the Panels menu, then try again. "
+                    "Open Rhino and check that the Rhino MCP strip says Bridge connected, "
+                    "then try again. Run RhinoMCPRestart in Rhino if the bridge is stopped. "
                     f"No bridge is listening on {self.endpoint.host}:{self.endpoint.port}."
                 ) from exc
 

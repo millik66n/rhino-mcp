@@ -82,7 +82,7 @@ applicability, amendments, conflicts, and current requirements before constructi
 For managed or silent deployment, the same download supports:
 
 ```powershell
-.\RhinoMCP-Windows-Setup-0.4.0.exe /CLIENT=codex /SILENT
+.\RhinoMCP-Windows-Setup-0.4.1.exe /CLIENT=codex /SILENT
 ```
 
 Valid client values are `codex`, `claude`, and `cursor`. Restart the selected AI
@@ -91,23 +91,25 @@ enabled.
 
 ## What appears in Rhino
 
-The dockable **Rhino MCP** panel opens automatically every time Rhino launches.
-It remains visible until the user hides it, stays hidden for the rest of that
-session, and appears again on the next Rhino launch. Run the `RhinoMCP` command
-at any time to show or hide it manually.
+The **Rhino MCP connection strip** appears automatically in the top-right of the
+active modeling viewport every time Rhino launches. It stays visible without
+taking up side-panel space, follows the active viewport, and appears again on the
+next Rhino launch even if it was hidden during the previous session.
 
-The panel fits into Rhino's normal panel/header strip. Its headline shows
-**Connected — ready to prompt Rhino**, **Rhino MCP is running — waiting for the
-AI client**, or an actionable stopped/not-configured message. It also shows:
+The headline says **CONNECTED — READY**, **WAITING FOR CODEX/CLAUDE/CURSOR**,
+**SETUP NEEDED**, or **BRIDGE STOPPED**. Four live dots show:
 
-- MCP server connected or waiting
-- Rhino bridge connected or stopped
-- Grasshopper available or not running
-- regulatory library loaded or not installed
-- selected AI client and tool profile
-- Rhino and Grasshopper ports
-- recent logs
-- **Restart**, **Create test cube**, and **Copy doctor command** buttons
+- **Bridge** — green when Rhino is listening
+- **Codex / Claude / Cursor** — green when the selected AI client is connected
+- **Grasshopper** — green when Grasshopper is open and its bridge is available
+- **Rules** — green when the offline regulatory library is loaded
+
+The strip is deliberately not included in viewport images returned to the AI.
+Run `RhinoMCP` to hide or show it. For troubleshooting, Rhino also provides:
+
+- `RhinoMCPStatus` — show the strip and print the full status and ports
+- `RhinoMCPRestart` — restart the local Rhino bridge
+- `RhinoMCPTest` — create, verify, and automatically remove a test cube
 
 The installer includes both Rhino 8 runtime builds. Rhino automatically uses
 `net7.0` in its normal runtime or `net48` if Rhino is configured for the legacy
@@ -250,7 +252,7 @@ bundled rhino-mcp.exe
         │
         │ framed, persistent localhost TCP
         ▼
-RhinoMCP.rhp ── Rhino document + dockable panel
+RhinoMCP.rhp ── Rhino document + visible viewport status strip
         │
         └── RhinoMCP.Grasshopper.gha (persistent localhost HTTP)
 ```

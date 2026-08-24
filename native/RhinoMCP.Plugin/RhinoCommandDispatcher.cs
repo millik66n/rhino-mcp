@@ -422,7 +422,9 @@ internal static class RhinoCommandDispatcher
             DrawGridAxes = true,
             TransparentBackground = false,
         };
-        Bitmap bitmap = capture.CaptureToBitmap(view)
+        Bitmap? captured = RhinoMcpPlugin.Instance?.StatusHud.WithoutOverlay(
+            () => capture.CaptureToBitmap(view));
+        Bitmap bitmap = (captured ?? capture.CaptureToBitmap(view))
             ?? throw new InvalidOperationException("Viewport capture failed.");
         string format = (GetString(parameters, "format") ?? "jpeg").ToLowerInvariant();
         int quality = Clamp(GetInt(parameters, "quality", 80), 20, 95);

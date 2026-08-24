@@ -9,9 +9,9 @@
     <TargetExt>.rhp</TargetExt>
     <AssemblyName>RhinoMCP</AssemblyName>
     <RootNamespace>RhinoMCP</RootNamespace>
-    <Version>0.4.0</Version>
+    <Version>0.4.1</Version>
     <Title>Rhino MCP</Title>
-    <Description>Automatic Rhino bridge and status panel for AI clients.</Description>
+    <Description>Automatic Rhino bridge with an always-visible connection strip for AI clients.</Description>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="RhinoCommon" Version="8.0.23304.9001" ExcludeAssets="runtime" />

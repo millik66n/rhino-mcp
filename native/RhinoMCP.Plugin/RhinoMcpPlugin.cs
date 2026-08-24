@@ -1,6 +1,5 @@
 using Rhino;
 using Rhino.PlugIns;
-using Rhino.UI;
 using System.Runtime.InteropServices;
 
 namespace RhinoMCP;
@@ -9,6 +8,7 @@ namespace RhinoMCP;
 public sealed class RhinoMcpPlugin : PlugIn
 {
     public static RhinoMcpPlugin? Instance { get; private set; }
+    internal RhinoMcpStatusHud StatusHud { get; } = new();
 
     public RhinoMcpPlugin() => Instance = this;
 
@@ -16,23 +16,23 @@ public sealed class RhinoMcpPlugin : PlugIn
 
     protected override LoadReturnCode OnLoad(ref string errorMessage)
     {
-        Panels.RegisterPanel(this, typeof(RhinoMcpPanel), "Rhino MCP", null, PanelType.PerDoc);
         SceneChangeTracker.Start();
         RhinoBridgeService.Instance.Start(UserSettings.RhinoPort);
         BridgeLog.Write("Rhino bridge started automatically.");
-        RhinoApp.Idle += OpenPanelOnStartup;
+        RhinoApp.Idle += ShowStatusOnStartup;
         return LoadReturnCode.Success;
     }
 
-    private void OpenPanelOnStartup(object? sender, EventArgs args)
+    private void ShowStatusOnStartup(object? sender, EventArgs args)
     {
-        RhinoApp.Idle -= OpenPanelOnStartup;
-        Panels.OpenPanel(RhinoMcpPanel.PanelId);
+        RhinoApp.Idle -= ShowStatusOnStartup;
+        StatusHud.Start();
     }
 
     protected override void OnShutdown()
     {
-        RhinoApp.Idle -= OpenPanelOnStartup;
+        RhinoApp.Idle -= ShowStatusOnStartup;
+        StatusHud.Stop();
         SceneChangeTracker.Stop();
         RhinoBridgeService.Instance.Dispose();
         base.OnShutdown();
