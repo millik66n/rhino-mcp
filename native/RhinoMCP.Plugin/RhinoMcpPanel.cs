@@ -13,6 +13,7 @@ public sealed class RhinoMcpPanel : Panel, IPanel
     private readonly Label _server = new();
     private readonly Label _rhino = new();
     private readonly Label _grasshopper = new();
+    private readonly Label _regulations = new();
     private readonly Label _client = new();
     private readonly Label _ports = new();
     private readonly TextArea _logs = new() { ReadOnly = true, Height = 180 };
@@ -51,6 +52,7 @@ public sealed class RhinoMcpPanel : Panel, IPanel
         layout.AddRow(new Label { Text = "MCP server" }, _server);
         layout.AddRow(new Label { Text = "Rhino bridge" }, _rhino);
         layout.AddRow(new Label { Text = "Grasshopper" }, _grasshopper);
+        layout.AddRow(new Label { Text = "Regulatory library" }, _regulations);
         layout.AddRow(new Label { Text = "AI client" }, _client);
         layout.AddRow(new Label { Text = "Ports" }, _ports);
         layout.AddSeparateRow(restart, test, doctor, null);
@@ -96,6 +98,7 @@ public sealed class RhinoMcpPanel : Panel, IPanel
             "Connected", "Waiting for AI client");
         SetStatus(_rhino, bridgeRunning, "Connected", "Stopped");
         SetStatus(_grasshopper, _grasshopperAvailable, "Available", "Not running");
+        SetStatus(_regulations, UserSettings.RegulationsAvailable, "Loaded", "Not installed");
         _client.Text = $"{UserSettings.Client} · {UserSettings.Profile}";
         _ports.Text = $"Rhino {UserSettings.RhinoPort} · GH {UserSettings.GrasshopperPort}";
         _logs.Text = BridgeLog.Text;

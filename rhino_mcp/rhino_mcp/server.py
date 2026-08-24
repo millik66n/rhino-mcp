@@ -13,6 +13,7 @@ from pydantic_settings.exceptions import IncompleteFieldDefinitionWarning
 from .config import Settings, load_settings
 from .grasshopper import GrasshopperConnection
 from .protocol import BridgeConnection, BridgeEndpoint, BridgeError
+from .regulations import ARCHITECTURE_INSTRUCTIONS, RegulationTools
 from .tools import GrasshopperTools, RhinoTools
 
 logger = logging.getLogger("rhino_mcp")
@@ -57,6 +58,7 @@ class Runtime:
 def create_app(settings: Settings | None = None) -> FastMCP:
     settings = settings or load_settings()
     runtime = Runtime(settings)
+    regulation_tools: RegulationTools | None = None
 
     @asynccontextmanager
     async def lifespan(_):
@@ -66,10 +68,21 @@ def create_app(settings: Settings | None = None) -> FastMCP:
             yield {"runtime": runtime}
         finally:
             runtime.close()
+            if regulation_tools is not None:
+                regulation_tools.library.close()
 
-    app = FastMCP("Rhino MCP", lifespan=lifespan)
+    app = FastMCP(
+        "Rhino MCP",
+        instructions=(
+            "Use Rhino MCP's safe, structured tools to inspect and modify Rhino and "
+            "Grasshopper. "
+            + ARCHITECTURE_INSTRUCTIONS
+        ),
+        lifespan=lifespan,
+    )
     RhinoTools(app, settings, runtime.rhino)
     GrasshopperTools(app, settings, runtime.grasshopper)
+    regulation_tools = RegulationTools(app, settings)
 
     @app.prompt()
     def rhino_workflow() -> str:
@@ -77,7 +90,8 @@ def create_app(settings: Settings | None = None) -> FastMCP:
         return (
             "Check rhino_status, inspect get_scene_changes, and prefer batch_geometry. "
             "Use dry_run for large edits. Mutations create one Rhino undo checkpoint. "
-            "Use the Developer profile only when high-level tools cannot express the task."
+            "Use the Developer profile only when high-level tools cannot express the task. "
+            + ARCHITECTURE_INSTRUCTIONS
         )
 
     app._rhino_mcp_runtime = runtime

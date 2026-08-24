@@ -11,6 +11,8 @@ internal static class UserSettings
     public static int GrasshopperPort => ReadInt("grasshopper_port", 9999);
     public static string Profile => ReadString("profile", "basic");
     public static string Client => ReadClient();
+    public static string RegulationsDatabase => ReadString("regulations_db", "");
+    public static bool RegulationsAvailable => File.Exists(RegulationsDatabase);
 
     private static JsonElement? ReadRoot()
     {

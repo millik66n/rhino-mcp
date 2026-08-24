@@ -16,6 +16,7 @@ from .clients import CLIENTS, client_is_configured
 from .config import Settings, config_path, load_settings
 from .grasshopper import GrasshopperConnection
 from .protocol import BridgeConnection, BridgeEndpoint, BridgeError
+from .regulations import RegulationLibrary
 
 
 @dataclass(slots=True)
@@ -89,6 +90,23 @@ def run_doctor(settings: Settings | None = None) -> list[Check]:
             "AI client",
             "pass" if configured_clients else "fail",
             f"{configured_clients} configured" if configured_clients else "run rhino-mcp setup",
+            True,
+        )
+    )
+
+    regulations = RegulationLibrary(settings)
+    regulation_status = regulations.status()
+    regulations.close()
+    checks.append(
+        Check(
+            "Regulations",
+            "pass" if regulation_status.get("ok") else "warn",
+            (
+                f"{regulation_status['indexed_documents']} documents / "
+                f"{regulation_status['indexed_pages']} pages"
+                if regulation_status.get("ok")
+                else str(regulation_status.get("message", "not installed"))
+            ),
             True,
         )
     )

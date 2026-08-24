@@ -11,6 +11,7 @@ def test_windows_installer_has_one_download_and_no_python_bootstrap():
     assert "RhinoMCP-Windows-Setup-{#AppVersion}" in installer
     assert "rhino-mcp.exe" in bootstrap
     assert "PyInstaller" in build
+    assert '--collect-data "rhino_mcp"' in build
     assert "astral.sh" not in bootstrap
     assert "uv tool" not in bootstrap
     assert ".whl" not in bootstrap

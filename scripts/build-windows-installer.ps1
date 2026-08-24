@@ -61,6 +61,7 @@ try {
         --workpath (Join-Path $buildRoot "pyinstaller") `
         --specpath $buildRoot `
         --collect-data "mcp" `
+        --collect-data "rhino_mcp" `
         --copy-metadata "mcp" `
         --copy-metadata "rhino-mcp" `
         "installer\rhino_mcp_entry.py"

@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import urllib.request
+from pathlib import Path
 
 from . import __version__
 from .clients import (
@@ -20,6 +21,7 @@ from .clients import (
 )
 from .config import VALID_PROFILES, config_path, load_settings, save_settings
 from .diagnostics import checks_as_dict, run_doctor
+from .regulations import RegulationLibrary, resolve_database_path
 
 MARKS = {"pass": "PASS", "warn": "WAIT", "fail": "FAIL"}
 RELEASE_API = "https://api.github.com/repos/millik66n/rhino-mcp/releases/latest"
@@ -46,6 +48,17 @@ def build_parser() -> argparse.ArgumentParser:
     config.add_argument("--profile", choices=VALID_PROFILES)
     config.add_argument("--image-size", type=int)
     config.add_argument("--image-quality", type=int)
+    config.add_argument("--regulations-db", type=Path)
+
+    regulations = commands.add_parser(
+        "regulations", help="Check or search the local architecture regulation library"
+    )
+    regulation_commands = regulations.add_subparsers(dest="regulations_command")
+    regulation_commands.add_parser("status", help="Show regulation-library coverage")
+    regulation_search = regulation_commands.add_parser("search", help="Search cited pages")
+    regulation_search.add_argument("query")
+    regulation_search.add_argument("--folder")
+    regulation_search.add_argument("--limit", type=int, default=6)
 
     doctor = commands.add_parser("doctor", help="Run clear connection and setup checks")
     doctor.add_argument("--json", action="store_true", dest="as_json")
@@ -93,9 +106,16 @@ def command_setup(args: argparse.Namespace) -> int:
         configured.append(client)
         print(f"  PASS  {client.title()} configured ({path})")
     settings.configured_clients = sorted(set(settings.configured_clients or []) | set(configured))
+    regulations = resolve_database_path(settings)
+    if regulations.is_file():
+        settings.regulations_db = str(regulations)
     saved = save_settings(settings)
     print(f"  PASS  {args.profile.title()} tool profile selected")
     print(f"  PASS  Settings saved ({saved})")
+    if regulations.is_file():
+        print(f"  PASS  Regulatory library ready ({regulations})")
+    else:
+        print("  WAIT  Regulatory library is not included in this build")
     print("\nNext: open Rhino. Rhino MCP starts automatically; then restart your AI client.")
     print("Check everything anytime with: rhino-mcp doctor")
     return 0
@@ -113,6 +133,10 @@ def command_config(args: argparse.Namespace) -> int:
         settings.image_max_size = args.image_size
     if args.image_quality is not None:
         settings.image_quality = args.image_quality
+    if args.regulations_db is not None:
+        if not args.regulations_db.is_file():
+            raise ValueError(f"regulation database does not exist: {args.regulations_db}")
+        settings.regulations_db = str(args.regulations_db.resolve())
     settings.__post_init__()
     path = save_settings(settings)
     print(f"Settings: {path}")
@@ -146,6 +170,7 @@ def command_status(as_json: bool) -> int:
             "grasshopper_port": settings.grasshopper_port,
             "image_max_size": settings.image_max_size,
             "image_quality": settings.image_quality,
+            "regulations_db": settings.regulations_db,
         }
         print(json.dumps(payload, indent=2))
         return 0
@@ -153,9 +178,34 @@ def command_status(as_json: bool) -> int:
     print(f"Rhino bridge: {settings.host}:{settings.rhino_port}")
     print(f"Grasshopper bridge: {settings.host}:{settings.grasshopper_port}")
     print(f"Images: max {settings.image_max_size}px, quality {settings.image_quality}")
+    regulations = RegulationLibrary(settings)
+    regulation_status = regulations.status()
+    regulations.close()
+    print(
+        "Regulations: "
+        + (
+            f"{regulation_status['indexed_documents']} documents / "
+            f"{regulation_status['indexed_pages']} pages"
+            if regulation_status.get("ok")
+            else "not installed"
+        )
+    )
     print(f"Settings: {config_path()}")
     print()
     return _print_checks(False)
+
+
+def command_regulations(args: argparse.Namespace) -> int:
+    library = RegulationLibrary(load_settings())
+    try:
+        if args.regulations_command in {None, "status"}:
+            payload = library.status()
+        else:
+            payload = library.search(args.query, folder=args.folder, limit=args.limit)
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0 if payload.get("ok") else 1
+    finally:
+        library.close()
 
 
 def _latest_release_tag() -> str:
@@ -240,6 +290,8 @@ def main(argv: list[str] | None = None) -> int:
             return _print_checks(args.as_json)
         if args.command == "status":
             return command_status(args.as_json)
+        if args.command == "regulations":
+            return command_regulations(args)
         if args.command == "update":
             return command_update()
         if args.command == "uninstall":

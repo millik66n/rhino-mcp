@@ -16,4 +16,6 @@ def test_rhino_panel_has_persistent_overall_connection_message():
 
     assert "Connected — ready to prompt Rhino" in panel
     assert "Rhino MCP is running — waiting for" in panel
+    assert 'new Label { Text = "Regulatory library" }' in panel
+    assert "UserSettings.RegulationsAvailable" in panel
     assert "PanelHidden" in panel and "_timer.Stop()" in panel
