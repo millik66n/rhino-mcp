@@ -36,6 +36,7 @@ def test_status_strip_reports_each_service_and_can_be_hidden():
     assert '"Run RhinoMCP to hide or show this strip"' in hud
     assert "status.Toggle();" in command
     assert 'EnglishName => "RhinoMCPStatus"' in command
+    assert 'EnglishName => "RhinoMCPDashboard"' in command
     assert 'EnglishName => "RhinoMCPRestart"' in command
     assert 'EnglishName => "RhinoMCPTest"' in command
 

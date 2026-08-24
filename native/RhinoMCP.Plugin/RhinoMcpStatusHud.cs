@@ -93,13 +93,105 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
     public void WriteStatus()
     {
         StatusSnapshot status = _status;
+        RhinoMcpDashboardService? dashboard = RhinoMcpPlugin.Instance?.Dashboard;
         RhinoApp.WriteLine($"Rhino MCP: {status.OverallText}");
         RhinoApp.WriteLine($"  Bridge: {(status.BridgeRunning ? "connected" : "stopped")}");
         RhinoApp.WriteLine($"  {status.ClientLabel}: {(status.ClientConnected ? "connected" : status.ClientWaitingText)}");
         RhinoApp.WriteLine($"  Grasshopper: {(status.GrasshopperAvailable ? "connected" : "not open")}");
         RhinoApp.WriteLine($"  Regulations: {(status.RegulationsAvailable ? "loaded" : "not installed")}");
         RhinoApp.WriteLine($"  Ports: Rhino {UserSettings.RhinoPort}, Grasshopper {UserSettings.GrasshopperPort}");
+        RhinoApp.WriteLine($"  Dashboard: {(dashboard?.Running == true ? dashboard.Url : "not running")}");
     }
+
+    public Dictionary<string, object?> DashboardStatus()
+    {
+        StatusSnapshot status = _status;
+        string overallState;
+        string title;
+        string message;
+        if (!status.BridgeRunning)
+        {
+            overallState = "stopped";
+            title = "Rhino bridge stopped";
+            message = "Run RhinoMCPRestart in Rhino. This page will keep checking.";
+        }
+        else if (!status.ClientConfigured)
+        {
+            overallState = "setup";
+            title = "Setup needed";
+            message = "Run the Rhino MCP installer again and choose Codex, Claude, or Cursor.";
+        }
+        else if (!status.ClientConnected)
+        {
+            overallState = "waiting";
+            title = $"Waiting for {status.ClientLabel}";
+            message = $"Open or restart {status.ClientLabel}, then start a prompt.";
+        }
+        else
+        {
+            overallState = "connected";
+            title = "Connected to Rhino";
+            message = $"Everything is ready. Start prompting in {status.ClientLabel}.";
+        }
+
+        return new Dictionary<string, object?>
+        {
+            ["version"] = typeof(RhinoMcpPlugin).Assembly.GetName().Version?.ToString(3) ?? "unknown",
+            ["updated_at"] = DateTimeOffset.UtcNow.ToString("O"),
+            ["overall"] = new Dictionary<string, object?>
+            {
+                ["state"] = overallState,
+                ["title"] = title,
+                ["message"] = message,
+            },
+            ["services"] = new object[]
+            {
+                Service(
+                    "bridge", "Rhino Bridge", "Communication bridge between Rhino and MCP.",
+                    status.BridgeRunning ? "Connected" : "Stopped",
+                    status.BridgeRunning ? "success" : "danger"),
+                Service(
+                    "client", status.ClientLabel, ClientDescription(status),
+                    status.ClientConnected ? "Connected" : status.ClientConfigured ? "Waiting" : "Not configured",
+                    status.ClientConnected ? "success" : status.ClientConfigured ? "warning" : "danger"),
+                Service(
+                    "grasshopper", "Grasshopper",
+                    status.GrasshopperAvailable
+                        ? "Grasshopper is open and available."
+                        : "Grasshopper is not currently open.",
+                    status.GrasshopperAvailable ? "Connected" : "Not open",
+                    status.GrasshopperAvailable ? "success" : "neutral"),
+                Service(
+                    "regulations", "Regulations",
+                    status.RegulationsAvailable
+                        ? "Regulations data is loaded and available."
+                        : "The offline regulations data is not installed.",
+                    status.RegulationsAvailable ? "Loaded" : "Not installed",
+                    status.RegulationsAvailable ? "success" : "danger"),
+            },
+            ["details"] = new Dictionary<string, object?>
+            {
+                ["rhino"] = $"Rhino {RhinoApp.Version.Major}",
+                ["profile"] = $"{TitleCase(UserSettings.Profile)} profile",
+                ["network"] = "127.0.0.1 only",
+                ["refresh"] = "Live status refresh",
+            },
+        };
+    }
+
+    public static Dictionary<string, object?> UnavailableDashboardStatus() => new()
+    {
+        ["version"] = "unknown",
+        ["updated_at"] = DateTimeOffset.UtcNow.ToString("O"),
+        ["overall"] = new Dictionary<string, object?>
+        {
+            ["state"] = "offline",
+            ["title"] = "Rhino is offline",
+            ["message"] = "Open Rhino to reconnect. This page will keep trying.",
+        },
+        ["services"] = Array.Empty<object>(),
+        ["details"] = new Dictionary<string, object?>(),
+    };
 
     protected override void DrawForeground(DrawEventArgs e)
     {
@@ -161,6 +253,32 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
     {
         e.Display.Draw2dText("●", statusColor, new Point2d(left, top), false, 11, "Segoe UI Symbol");
         e.Display.Draw2dText(label, SecondaryText, new Point2d(left + 14, top), false, 11, "Segoe UI");
+    }
+
+    private static Dictionary<string, object?> Service(
+        string id, string label, string description, string status, string tone) => new()
+    {
+        ["id"] = id,
+        ["label"] = label,
+        ["description"] = description,
+        ["status"] = status,
+        ["tone"] = tone,
+    };
+
+    private static string ClientDescription(StatusSnapshot status)
+    {
+        if (!status.ClientConfigured)
+            return "Choose an AI client in Rhino MCP setup.";
+        return status.ClientConnected
+            ? $"{status.ClientLabel} is connected and ready."
+            : $"{status.ClientLabel} is configured but has not connected yet.";
+    }
+
+    private static string TitleCase(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "Basic";
+        return char.ToUpperInvariant(value[0]) + value.Substring(1).ToLowerInvariant();
     }
 
     private void PollStatus(object? state)

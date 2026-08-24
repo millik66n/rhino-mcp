@@ -28,6 +28,7 @@ class Settings:
     host: str = "127.0.0.1"
     rhino_port: int = 9876
     grasshopper_port: int = 9999
+    dashboard_port: int = 9877
     connect_timeout: float = 2.0
     request_timeout: float = 45.0
     image_max_size: int = 1024
@@ -41,7 +42,11 @@ class Settings:
         self.profile = self.profile.lower()
         if self.profile not in VALID_PROFILES:
             raise ValueError("profile must be basic, grasshopper, or developer")
-        if not (1 <= self.rhino_port <= 65535 and 1 <= self.grasshopper_port <= 65535):
+        if not (
+            1 <= self.rhino_port <= 65535
+            and 1 <= self.grasshopper_port <= 65535
+            and 1 <= self.dashboard_port <= 65535
+        ):
             raise ValueError("ports must be between 1 and 65535")
         self.image_quality = max(20, min(95, int(self.image_quality)))
         self.image_max_size = max(256, min(4096, int(self.image_max_size)))

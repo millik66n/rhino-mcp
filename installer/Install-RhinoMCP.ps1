@@ -80,7 +80,7 @@ try {
         server = $serverPath
     } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $AppDir "installed.json") -Encoding UTF8
 
-    Write-Host "Rhino MCP is installed. Open Rhino 8, then open Grasshopper and start prompting."
+    Write-Host "Rhino MCP is installed. Open Rhino 8; the connection dashboard opens automatically in your default browser."
 }
 finally {
     Stop-Transcript | Out-Null

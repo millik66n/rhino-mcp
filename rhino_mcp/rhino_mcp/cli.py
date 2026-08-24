@@ -116,7 +116,10 @@ def command_setup(args: argparse.Namespace) -> int:
         print(f"  PASS  Regulatory library ready ({regulations})")
     else:
         print("  WAIT  Regulatory library is not included in this build")
-    print("\nNext: open Rhino. Rhino MCP starts automatically; then restart your AI client.")
+    print(
+        "\nNext: open Rhino. The connection dashboard opens automatically in your "
+        "default browser; then restart your AI client."
+    )
     print("Check everything anytime with: rhino-mcp doctor")
     return 0
 
@@ -168,6 +171,7 @@ def command_status(as_json: bool) -> int:
             "host": settings.host,
             "rhino_port": settings.rhino_port,
             "grasshopper_port": settings.grasshopper_port,
+            "dashboard_port": settings.dashboard_port,
             "image_max_size": settings.image_max_size,
             "image_quality": settings.image_quality,
             "regulations_db": settings.regulations_db,
@@ -177,6 +181,7 @@ def command_status(as_json: bool) -> int:
     print(f"Profile: {settings.profile}")
     print(f"Rhino bridge: {settings.host}:{settings.rhino_port}")
     print(f"Grasshopper bridge: {settings.host}:{settings.grasshopper_port}")
+    print(f"Status dashboard: http://{settings.host}:{settings.dashboard_port}/")
     print(f"Images: max {settings.image_max_size}px, quality {settings.image_quality}")
     regulations = RegulationLibrary(settings)
     regulation_status = regulations.status()

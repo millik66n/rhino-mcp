@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Rhino MCP — Connection status</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      --page: #0c0f12;
+      --surface: #11151a;
+      --surface-raised: #15191f;
+      --line: #292f37;
+      --line-strong: #39414c;
+      --text: #f4f6f8;
+      --muted: #969eaa;
+      --quiet: #6f7783;
+      --success: #42d58c;
+      --success-soft: #143c2a;
+      --warning: #e0aa4d;
+      --warning-soft: #3d301b;
+      --danger: #ed7373;
+      --danger-soft: #422326;
+      --neutral: #858d99;
+      --radius: 11px;
+      --content: 1460px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { min-width: 320px; background: var(--page); }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background: var(--page);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button { font: inherit; }
+
+    .topbar {
+      height: 88px;
+      border-bottom: 1px solid var(--line);
+      background: #0f1216;
+    }
+
+    .topbar__inner {
+      width: calc(100% - 96px);
+      height: 100%;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: .18em;
+    }
+
+    .live-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .live-state__dot,
+    .service-icon__dot {
+      width: 9px;
+      height: 9px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: var(--neutral);
+    }
+
+    .live-state[data-tone="success"] { color: var(--success); }
+    .live-state[data-tone="warning"] { color: var(--warning); }
+    .live-state[data-tone="danger"] { color: var(--danger); }
+    .live-state[data-tone="success"] .live-state__dot { background: var(--success); }
+    .live-state[data-tone="warning"] .live-state__dot { background: var(--warning); }
+    .live-state[data-tone="danger"] .live-state__dot { background: var(--danger); }
+
+    main {
+      width: min(calc(100% - 48px), var(--content));
+      margin: 0 auto;
+      padding: 58px 0 34px;
+    }
+
+    .hero { margin-bottom: 36px; }
+
+    h1 {
+      max-width: 860px;
+      margin: 0;
+      font-size: clamp(38px, 4.4vw, 64px);
+      line-height: 1.05;
+      letter-spacing: -.045em;
+      font-weight: 650;
+    }
+
+    .hero__message {
+      max-width: 720px;
+      margin: 20px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 1.7vw, 21px);
+      line-height: 1.55;
+    }
+
+    .status-list {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .service-row {
+      min-height: 96px;
+      padding: 22px 28px;
+      display: grid;
+      grid-template-columns: 48px minmax(220px, 390px) minmax(280px, 1fr) 138px;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .service-row + .service-row { border-top: 1px solid var(--line); }
+
+    .service-icon {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+    }
+
+    .service-icon__dot { width: 28px; height: 28px; }
+    .service-row[data-tone="success"] .service-icon__dot { background: var(--success); }
+    .service-row[data-tone="warning"] .service-icon__dot { background: var(--warning); }
+    .service-row[data-tone="danger"] .service-icon__dot { background: var(--danger); }
+
+    .service-copy {
+      min-width: 0;
+      display: contents;
+    }
+
+    .service-copy h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.3;
+      font-weight: 650;
+    }
+
+    .service-copy p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.45;
+    }
+
+    .service-status {
+      min-width: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      color: var(--neutral);
+      background: transparent;
+      text-align: right;
+      font-size: 16px;
+      line-height: 1;
+      font-weight: 700;
+    }
+
+    .service-row[data-tone="success"] .service-status {
+      color: var(--success);
+      background: transparent;
+    }
+
+    .service-row[data-tone="warning"] .service-status {
+      color: var(--warning);
+      background: transparent;
+    }
+
+    .service-row[data-tone="danger"] .service-status {
+      color: var(--danger);
+      background: transparent;
+    }
+
+    .details {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-raised);
+    }
+
+    .detail {
+      min-width: 0;
+      min-height: 92px;
+      padding: 21px 24px;
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .detail + .detail { border-left: 1px solid var(--line); }
+
+    .detail svg {
+      width: 19px;
+      height: 19px;
+      flex: 0 0 auto;
+      color: var(--quiet);
+    }
+
+    .footer {
+      position: relative;
+      margin-top: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .footer::before {
+      content: "";
+      position: absolute;
+      top: -30px;
+      left: 50%;
+      width: 100vw;
+      border-top: 1px solid var(--line);
+      transform: translateX(-50%);
+    }
+
+    .footer p {
+      margin: 0;
+      color: var(--quiet);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .refresh-button {
+      min-width: 124px;
+      padding: 11px 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface-raised);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .refresh-button:hover { border-color: #596474; background: #1a2027; }
+    .refresh-button:focus-visible { outline: 2px solid var(--success); outline-offset: 3px; }
+    .refresh-button:disabled { cursor: wait; opacity: .65; }
+    .refresh-button svg { width: 16px; height: 16px; }
+    .refresh-button.is-busy svg { animation: spin .75s linear infinite; }
+
+    .polling-note {
+      margin: 30px 0 0;
+      color: #59616c;
+      text-align: center;
+      font-size: 12px;
+      letter-spacing: .02em;
+    }
+
+    .polling-note::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      margin-right: 8px;
+      display: inline-block;
+      border-radius: 50%;
+      background: var(--success);
+      vertical-align: 2px;
+    }
+
+    body[data-state="offline"] .polling-note::before,
+    body[data-state="stopped"] .polling-note::before,
+    body[data-state="setup"] .polling-note::before { background: var(--danger); }
+    body[data-state="waiting"] .polling-note::before { background: var(--warning); }
+
+    .noscript {
+      margin: 24px;
+      padding: 16px;
+      border: 1px solid var(--danger);
+      border-radius: 8px;
+      color: var(--danger);
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 760px) {
+      .topbar__inner,
+      main { width: min(calc(100% - 32px), var(--content)); }
+      main { padding-top: 48px; }
+      .hero { margin-bottom: 36px; }
+      .service-row {
+        min-height: 0;
+        padding: 22px 20px;
+        grid-template-columns: 40px minmax(0, 1fr);
+        gap: 16px;
+      }
+      .service-copy { display: block; }
+      .service-status {
+        min-width: 0;
+        margin: 2px 0 0;
+        grid-column: 2;
+        justify-self: start;
+        font-size: 14px;
+      }
+      .service-copy p { margin-top: 7px; font-size: 14px; }
+      .details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .detail:nth-child(3) { border-left: 0; border-top: 1px solid var(--line); }
+      .detail:nth-child(4) { border-top: 1px solid var(--line); }
+      .footer { align-items: flex-start; flex-direction: column; }
+    }
+
+    @media (max-width: 430px) {
+      .topbar { height: 64px; }
+      .topbar__inner, main { width: calc(100% - 28px); }
+      .brand { font-size: 13px; }
+      .live-state { gap: 7px; font-size: 12px; }
+      main { padding-top: 38px; }
+      h1 { font-size: 38px; }
+      .hero__message { font-size: 16px; }
+      .details { grid-template-columns: 1fr; }
+      .detail { min-height: 68px; }
+      .detail + .detail { border-left: 0; border-top: 1px solid var(--line); }
+      .refresh-button { width: 100%; }
+      .polling-note { margin-top: 30px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body data-state="waiting">
+  <header class="topbar">
+    <div class="topbar__inner">
+      <div class="brand">RHINO MCP</div>
+      <div class="live-state" id="live-state" data-tone="warning">
+        <span class="live-state__dot" aria-hidden="true"></span>
+        <span id="live-label">Checking connection</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="overall-title" aria-describedby="overall-message">
+      <h1 id="overall-title">Connecting to Rhino…</h1>
+      <p class="hero__message" id="overall-message" aria-live="polite">
+        Checking the local Rhino MCP connection.
+      </p>
+    </section>
+
+    <section class="status-list" aria-label="Connection services">
+      <article class="service-row" id="service-bridge" data-tone="neutral">
+        <div class="service-icon" aria-hidden="true"><span class="service-icon__dot"></span></div>
+        <div class="service-copy">
+          <h2 data-label>Rhino Bridge</h2>
+          <p data-description>Communication bridge between Rhino and MCP.</p>
+        </div>
+        <div class="service-status" data-status>Checking</div>
+      </article>
+
+      <article class="service-row" id="service-client" data-tone="neutral">
+        <div class="service-icon" aria-hidden="true"><span class="service-icon__dot"></span></div>
+        <div class="service-copy">
+          <h2 data-label>AI client</h2>
+          <p data-description>Checking your configured AI client.</p>
+        </div>
+        <div class="service-status" data-status>Checking</div>
+      </article>
+
+      <article class="service-row" id="service-grasshopper" data-tone="neutral">
+        <div class="service-icon" aria-hidden="true"><span class="service-icon__dot"></span></div>
+        <div class="service-copy">
+          <h2 data-label>Grasshopper</h2>
+          <p data-description>Checking the Grasshopper bridge.</p>
+        </div>
+        <div class="service-status" data-status>Checking</div>
+      </article>
+
+      <article class="service-row" id="service-regulations" data-tone="neutral">
+        <div class="service-icon" aria-hidden="true"><span class="service-icon__dot"></span></div>
+        <div class="service-copy">
+          <h2 data-label>Regulations</h2>
+          <p data-description>Checking the offline regulations data.</p>
+        </div>
+        <div class="service-status" data-status>Checking</div>
+      </article>
+    </section>
+
+    <section class="details" aria-label="Connection details">
+      <div class="detail">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/></svg>
+        <span id="detail-rhino">Rhino</span>
+      </div>
+      <div class="detail">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m4 7 8-4 8 4-8 4zM4 12l8 4 8-4M4 17l8 4 8-4"/></svg>
+        <span id="detail-profile">Tool profile</span>
+      </div>
+      <div class="detail">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <span id="detail-network">127.0.0.1 only</span>
+      </div>
+      <div class="detail">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 8.2A7 7 0 0 1 18.8 7M17.9 15.8A7 7 0 0 1 5.2 17"/></svg>
+        <span id="detail-refresh">Live status refresh</span>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>You can close this tab. Run <strong>RhinoMCPDashboard</strong> in Rhino to open it again.</p>
+      <button class="refresh-button" id="refresh-button" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 8.2A7 7 0 0 1 18.8 7M17.9 15.8A7 7 0 0 1 5.2 17"/></svg>
+        <span>Refresh now</span>
+      </button>
+    </footer>
+    <p class="polling-note" id="polling-note">Polling live connection…</p>
+  </main>
+
+  <noscript><p class="noscript">Enable JavaScript to see live Rhino MCP connection status.</p></noscript>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const refreshButton = document.getElementById("refresh-button");
+      const overallTitle = document.getElementById("overall-title");
+      const overallMessage = document.getElementById("overall-message");
+      const liveState = document.getElementById("live-state");
+      const liveLabel = document.getElementById("live-label");
+      const pollingNote = document.getElementById("polling-note");
+      const serviceIds = ["bridge", "client", "grasshopper", "regulations"];
+      let refreshing = false;
+
+      const overallLabels = {
+        connected: ["Live connection", "success"],
+        waiting: ["Waiting for AI client", "warning"],
+        setup: ["Setup needed", "danger"],
+        stopped: ["Bridge stopped", "danger"],
+        offline: ["Waiting for Rhino", "danger"]
+      };
+
+      function setText(id, value) {
+        const element = document.getElementById(id);
+        if (element && typeof value === "string" && value.length) element.textContent = value;
+      }
+
+      function renderService(service) {
+        const row = document.getElementById(`service-${service.id}`);
+        if (!row) return;
+        const label = row.querySelector("[data-label]");
+        const description = row.querySelector("[data-description]");
+        const status = row.querySelector("[data-status]");
+        label.textContent = service.label || "Unknown service";
+        description.textContent = service.description || "Status unavailable.";
+        status.textContent = service.status || "Unavailable";
+        row.dataset.tone = ["success", "warning", "danger", "neutral"].includes(service.tone)
+          ? service.tone
+          : "neutral";
+      }
+
+      function render(payload) {
+        const overall = payload && payload.overall ? payload.overall : {};
+        const state = overallLabels[overall.state] ? overall.state : "offline";
+        const [label, tone] = overallLabels[state];
+        document.body.dataset.state = state;
+        liveState.dataset.tone = tone;
+        liveLabel.textContent = label;
+        overallTitle.textContent = overall.title || "Rhino status unavailable";
+        overallMessage.textContent = overall.message || "This page will keep checking the local connection.";
+
+        const services = Array.isArray(payload.services) ? payload.services : [];
+        serviceIds.forEach(id => {
+          const service = services.find(item => item && item.id === id);
+          if (service) renderService(service);
+        });
+
+        const details = payload.details || {};
+        setText("detail-rhino", details.rhino);
+        setText("detail-profile", details.profile);
+        setText("detail-network", details.network);
+        setText("detail-refresh", details.refresh);
+        pollingNote.textContent = "Polling live connection…";
+      }
+
+      function renderOffline() {
+        render({
+          overall: {
+            state: "offline",
+            title: "Rhino is offline",
+            message: "Open Rhino to reconnect. This page will keep trying."
+          },
+          services: [
+            { id: "bridge", label: "Rhino Bridge", description: "The local Rhino bridge is not available.", status: "Offline", tone: "danger" },
+            { id: "client", label: "AI client", description: "Waiting for Rhino before checking the AI client.", status: "Unavailable", tone: "neutral" },
+            { id: "grasshopper", label: "Grasshopper", description: "Waiting for Rhino before checking Grasshopper.", status: "Unavailable", tone: "neutral" },
+            { id: "regulations", label: "Regulations", description: "Waiting for Rhino before checking the regulations data.", status: "Unavailable", tone: "neutral" }
+          ],
+          details: {
+            rhino: "Rhino offline",
+            profile: "Profile unavailable",
+            network: "127.0.0.1 only",
+            refresh: "Retrying automatically"
+          }
+        });
+      }
+
+      async function refresh(manual = false) {
+        if (refreshing) return;
+        refreshing = true;
+        if (manual) {
+          refreshButton.disabled = true;
+          refreshButton.classList.add("is-busy");
+        }
+        try {
+          const response = await fetch("/api/status", { cache: "no-store" });
+          if (!response.ok) throw new Error(`Status request failed: ${response.status}`);
+          render(await response.json());
+        } catch (_error) {
+          renderOffline();
+        } finally {
+          refreshing = false;
+          refreshButton.disabled = false;
+          refreshButton.classList.remove("is-busy");
+        }
+      }
+
+      refreshButton.addEventListener("click", () => refresh(true));
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) refresh();
+      });
+      refresh();
+      window.setInterval(refresh, 1000);
+    })();
+  </script>
+</body>
+</html>

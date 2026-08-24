@@ -9,13 +9,16 @@
     <TargetExt>.rhp</TargetExt>
     <AssemblyName>RhinoMCP</AssemblyName>
     <RootNamespace>RhinoMCP</RootNamespace>
-    <Version>0.4.1</Version>
+    <Version>0.4.2</Version>
     <Title>Rhino MCP</Title>
-    <Description>Automatic Rhino bridge with an always-visible connection strip for AI clients.</Description>
+    <Description>Automatic Rhino bridge with a local browser dashboard and viewport connection strip.</Description>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="RhinoCommon" Version="8.0.23304.9001" ExcludeAssets="runtime" />
     <PackageReference Include="System.Drawing.Common" Version="7.0.0" ExcludeAssets="runtime" Condition="'$(TargetFramework)' == 'net7.0'" />
     <PackageReference Include="System.Text.Json" Version="8.0.6" Condition="'$(TargetFramework)' == 'net48'" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Dashboard/index.html" LogicalName="RhinoMCP.Dashboard.index.html" />
   </ItemGroup>
 </Project>

@@ -9,6 +9,7 @@ public sealed class RhinoMcpPlugin : PlugIn
 {
     public static RhinoMcpPlugin? Instance { get; private set; }
     internal RhinoMcpStatusHud StatusHud { get; } = new();
+    internal RhinoMcpDashboardService Dashboard { get; } = new();
 
     public RhinoMcpPlugin() => Instance = this;
 
@@ -18,6 +19,7 @@ public sealed class RhinoMcpPlugin : PlugIn
     {
         SceneChangeTracker.Start();
         RhinoBridgeService.Instance.Start(UserSettings.RhinoPort);
+        Dashboard.Start(UserSettings.DashboardPort);
         BridgeLog.Write("Rhino bridge started automatically.");
         RhinoApp.Idle += ShowStatusOnStartup;
         return LoadReturnCode.Success;
@@ -27,11 +29,13 @@ public sealed class RhinoMcpPlugin : PlugIn
     {
         RhinoApp.Idle -= ShowStatusOnStartup;
         StatusHud.Start();
+        Dashboard.OpenBrowser();
     }
 
     protected override void OnShutdown()
     {
         RhinoApp.Idle -= ShowStatusOnStartup;
+        Dashboard.Stop();
         StatusHud.Stop();
         SceneChangeTracker.Stop();
         RhinoBridgeService.Instance.Dispose();

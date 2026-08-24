@@ -32,6 +32,10 @@ and Rhino MCP never updates itself.
 Installing a different version always requires deliberately running another
 installer.
 
+When Rhino starts, it automatically opens a local connection dashboard in the
+Windows default browser. It works without internet access and does not require a
+separate app, service, or browser extension.
+
 ## Architecture regulation checks
 
 Rhino MCP includes a compact, offline search index built from the supplied
@@ -82,12 +86,33 @@ applicability, amendments, conflicts, and current requirements before constructi
 For managed or silent deployment, the same download supports:
 
 ```powershell
-.\RhinoMCP-Windows-Setup-0.4.1.exe /CLIENT=codex /SILENT
+.\RhinoMCP-Windows-Setup-0.4.2.exe /CLIENT=codex /SILENT
 ```
 
 Valid client values are `codex`, `claude`, and `cursor`. Restart the selected AI
 client after setup. Codex users can run `/mcp` to confirm that `rhino-mcp` is
 enabled.
+
+## Connection dashboard
+
+Every time Rhino launches, Rhino MCP opens one dashboard tab in the Windows
+default browser. It uses whichever browser the user has chosen; Chrome is not
+required. The page shows the live state of:
+
+- **Rhino Bridge** — connected or stopped
+- **Codex / Claude / Cursor** — connected, waiting, or not configured
+- **Grasshopper** — connected or not open
+- **Regulations** — loaded or not installed
+
+The page refreshes its status once per second. If Rhino closes, the existing tab
+changes to **Rhino is offline** and keeps trying; when Rhino reopens, it reconnects
+automatically. The tab can be closed at any time. Run `RhinoMCPDashboard` in Rhino
+to open it again.
+
+The default address is `http://127.0.0.1:9877/`. It is served directly by the Rhino
+plug-in, binds only to this computer, is read-only, loads no web assets, and sends
+nothing to the internet. If that port is already occupied, Rhino MCP chooses a
+private local fallback automatically and opens the correct address.
 
 ## What appears in Rhino
 
@@ -107,7 +132,8 @@ The headline says **CONNECTED — READY**, **WAITING FOR CODEX/CLAUDE/CURSOR**,
 The strip is deliberately not included in viewport images returned to the AI.
 Run `RhinoMCP` to hide or show it. For troubleshooting, Rhino also provides:
 
-- `RhinoMCPStatus` — show the strip and print the full status and ports
+- `RhinoMCPDashboard` — reopen the browser dashboard
+- `RhinoMCPStatus` — show the strip and print the full status, ports, and dashboard URL
 - `RhinoMCPRestart` — restart the local Rhino bridge
 - `RhinoMCPTest` — create, verify, and automatically remove a test cube
 
@@ -120,8 +146,7 @@ cleanup is disabled, the test cube is left in the document.
 
 ## Advanced commands
 
-The Rhino panel's **Copy doctor command** button copies the correct full path for
-installer users. Source and Python-package installations can use:
+Source and Python-package installations can use:
 
 ```text
 rhino-mcp setup [codex|claude|cursor]
@@ -253,11 +278,13 @@ bundled rhino-mcp.exe
         │ framed, persistent localhost TCP
         ▼
 RhinoMCP.rhp ── Rhino document + visible viewport status strip
+        ├── read-only browser dashboard at 127.0.0.1
         │
         └── RhinoMCP.Grasshopper.gha (persistent localhost HTTP)
 ```
 
-Both bridges bind only to `127.0.0.1`; they are not exposed to the network.
+Both bridges and the dashboard bind only to `127.0.0.1`; they are not exposed to
+the network.
 
 ## License
 

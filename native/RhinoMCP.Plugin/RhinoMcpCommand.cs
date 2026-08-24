@@ -35,6 +35,23 @@ public sealed class RhinoMcpStatusCommand : Command
     }
 }
 
+public sealed class RhinoMcpDashboardCommand : Command
+{
+    public override string EnglishName => "RhinoMCPDashboard";
+
+    protected override Result RunCommand(RhinoDoc doc, RunMode mode)
+    {
+        RhinoMcpDashboardService? dashboard = RhinoMcpPlugin.Instance?.Dashboard;
+        if (dashboard is null)
+            return Result.Failure;
+        dashboard.Start(UserSettings.DashboardPort);
+        if (!dashboard.OpenBrowser())
+            return Result.Failure;
+        RhinoApp.WriteLine($"Rhino MCP dashboard: {dashboard.Url}");
+        return Result.Success;
+    }
+}
+
 public sealed class RhinoMcpRestartCommand : Command
 {
     public override string EnglishName => "RhinoMCPRestart";
