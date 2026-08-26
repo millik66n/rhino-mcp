@@ -38,8 +38,12 @@ def test_remove_json_client_only_removes_rhino(tmp_path, monkeypatch):
 
 def test_codex_uses_official_cli(tmp_path, monkeypatch):
     calls = []
+    workflow_calls = []
     monkeypatch.setattr(clients, "_codex_executable", lambda: "/fake/codex")
     monkeypatch.setattr(clients, "client_config_path", lambda _: tmp_path / "config.toml")
+    monkeypatch.setattr(
+        clients, "configure_codex_workflow", lambda: workflow_calls.append(True)
+    )
 
     class Result:
         returncode = 0
@@ -63,6 +67,7 @@ def test_codex_uses_official_cli(tmp_path, monkeypatch):
         "rhino-mcp",
         "serve",
     ]
+    assert workflow_calls == [True]
 
 
 def test_codex_finds_windows_desktop_app_cli(tmp_path, monkeypatch):

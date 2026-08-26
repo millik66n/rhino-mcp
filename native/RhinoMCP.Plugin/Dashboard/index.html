@@ -146,6 +146,62 @@
       line-height: 1.5;
     }
 
+    .prompt-guide {
+      margin: 0 0 24px;
+      padding: 24px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 28px;
+      border: 1px solid #397956;
+      border-radius: var(--radius);
+      background: linear-gradient(110deg, #10251a, #11171a 72%);
+    }
+
+    .prompt-guide__eyebrow {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--success);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .prompt-guide h2 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.35;
+      font-weight: 650;
+    }
+
+    .prompt-guide code {
+      color: var(--success);
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+    }
+
+    .prompt-guide p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .prompt-button {
+      min-width: 164px;
+      padding: 11px 16px;
+      border: 1px solid #4b9a6d;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--success);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .prompt-button:hover { border-color: var(--success); background: #163524; }
+    .prompt-button:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+
     .status-list {
       overflow: hidden;
       border: 1px solid var(--line);
@@ -511,6 +567,7 @@
       main { padding-top: 48px; }
       .hero { margin-bottom: 36px; }
       .hero__actions { align-items: flex-start; flex-direction: column; }
+      .prompt-guide { align-items: flex-start; flex-direction: column; }
       .service-row {
         min-height: 0;
         padding: 22px 20px;
@@ -545,6 +602,7 @@
       h1 { font-size: 38px; }
       .hero__message { font-size: 16px; }
       .primary-button { width: 100%; }
+      .prompt-button { width: 100%; }
       .details { grid-template-columns: 1fr; }
       .detail { min-height: 68px; }
       .detail + .detail { border-left: 0; border-top: 1px solid var(--line); }
@@ -582,6 +640,15 @@
         <button class="primary-button" id="open-codex-button" type="button">Open Codex</button>
         <span class="launch-note" id="codex-launch-note" aria-live="polite"></span>
       </div>
+    </section>
+
+    <section class="prompt-guide" aria-labelledby="prompt-guide-title">
+      <div>
+        <span class="prompt-guide__eyebrow">Required prompt prefix</span>
+        <h2 id="prompt-guide-title">Begin every Rhino request with <code>/RhinoMCP</code></h2>
+        <p>Example: <code>/RhinoMCP create a 5 × 5 × 5 metre cube</code></p>
+      </div>
+      <button class="prompt-button" id="copy-prompt-button" type="button">Copy /RhinoMCP</button>
     </section>
 
     <section class="status-list" aria-label="Connection services">
@@ -670,7 +737,7 @@
     </section>
 
     <footer class="footer">
-      <p>You can close this tab. Run <strong>RhinoMCPDashboard</strong> in Rhino to open it again.</p>
+      <p>This local page opens in Chrome when available. Run <strong>RhinoMCPDashboard</strong> in Rhino to display it again.</p>
       <button class="refresh-button" id="refresh-button" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 8.2A7 7 0 0 1 18.8 7M17.9 15.8A7 7 0 0 1 5.2 17"/></svg>
         <span>Refresh now</span>
@@ -687,6 +754,7 @@
 
       const refreshButton = document.getElementById("refresh-button");
       const openCodexButton = document.getElementById("open-codex-button");
+      const copyPromptButton = document.getElementById("copy-prompt-button");
       const codexActions = document.getElementById("codex-actions");
       const codexLaunchNote = document.getElementById("codex-launch-note");
       const actionToken = "__RHINO_MCP_ACTION_TOKEN__";
@@ -881,7 +949,7 @@
           overall: {
             state: "offline",
             title: "Rhino is offline",
-            message: "Open Rhino to reconnect. This page will keep trying."
+            message: "Run a /RhinoMCP request in Codex to restart Rhino and reconnect."
           },
           services: [
             { id: "bridge", label: "Rhino Bridge", description: "The local Rhino bridge is not available.", status: "Offline", tone: "danger" },
@@ -943,24 +1011,34 @@
         }
       }
 
+      async function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+          try {
+            await navigator.clipboard.writeText(text);
+            return;
+          } catch (_error) {
+            // Browser policy can reject Clipboard API access. Use the legacy
+            // local-page fallback below so the button remains dependable.
+          }
+        }
+        const input = document.createElement("textarea");
+        input.value = text;
+        input.setAttribute("readonly", "");
+        input.style.position = "fixed";
+        input.style.opacity = "0";
+        document.body.append(input);
+        input.select();
+        const copied = document.execCommand("copy");
+        input.remove();
+        if (!copied) throw new Error("The browser refused clipboard access.");
+      }
+
       async function copyPath(button) {
         const path = button.dataset.copyPath || "";
         if (!path) return;
         const original = button.textContent;
         try {
-          if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(path);
-          } else {
-            const input = document.createElement("textarea");
-            input.value = path;
-            input.setAttribute("readonly", "");
-            input.style.position = "fixed";
-            input.style.opacity = "0";
-            document.body.append(input);
-            input.select();
-            document.execCommand("copy");
-            input.remove();
-          }
+          await copyText(path);
           button.textContent = "Copied";
         } catch (_error) {
           button.textContent = "Copy failed";
@@ -968,8 +1046,20 @@
         window.setTimeout(() => { button.textContent = original; }, 1400);
       }
 
+      async function copyPromptPrefix() {
+        const original = copyPromptButton.textContent;
+        try {
+          await copyText("/RhinoMCP ");
+          copyPromptButton.textContent = "Copied — paste in Codex";
+        } catch (_error) {
+          copyPromptButton.textContent = "Copy failed";
+        }
+        window.setTimeout(() => { copyPromptButton.textContent = original; }, 1600);
+      }
+
       refreshButton.addEventListener("click", () => refresh(true));
       openCodexButton.addEventListener("click", openCodex);
+      copyPromptButton.addEventListener("click", copyPromptPrefix);
       document.addEventListener("click", event => {
         const button = event.target.closest("[data-copy-path]");
         if (button) copyPath(button);

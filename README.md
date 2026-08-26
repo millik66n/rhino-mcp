@@ -6,7 +6,8 @@ The Windows experience is deliberately short:
 
 1. Download and run **RhinoMCP-Windows-Setup**.
 2. Choose Codex, Claude, or Cursor.
-3. Open Rhino. If Codex was chosen, it opens automatically; start writing.
+3. In Codex, begin a request with `/RhinoMCP`. Rhino, its bridge, and the Chrome
+   connection page open automatically when needed.
 
 No Rhino Package Manager, repository clone, Python installation, `uv`, Conda
 environment, Rhino Python script, Grasshopper file, Python-path change, terminal
@@ -23,6 +24,7 @@ double-click it. The installer asks for the AI client and then automatically:
 - installs the Rhino and Grasshopper bridges using Rhino's bundled installer;
 - installs a self-contained MCP server with its complete runtime;
 - writes the Codex, Claude, or Cursor MCP entry safely;
+- installs the Codex `$rhino-mcp` workflow and `/RhinoMCP` routing guidance;
 - selects the safe Grasshopper tool profile;
 - runs the doctor checks; and
 - adds a normal entry to Windows **Installed apps** for clean removal.
@@ -32,13 +34,15 @@ and Rhino MCP never updates itself.
 Installing a different version always requires deliberately running another
 installer.
 
-When Rhino starts, it automatically opens a local connection dashboard in the
-Windows default browser. It works without internet access and does not require a
+When Rhino starts, it automatically opens a local connection dashboard in Google
+Chrome when Chrome is available, falling back to the Windows default browser. It
+works without internet access and does not require a
 separate service or browser extension. If Codex was selected during setup, Rhino
 also opens the installed Codex/ChatGPT desktop app after startup. If it is already
 running, Rhino brings its window forward instead of opening a duplicate. The
 dashboard says **Codex is open — start writing** and includes an **Open Codex**
-button in case the app is closed later. On current OpenAI desktop installations,
+button in case the app is closed later. The dashboard keeps the required
+`/RhinoMCP` prompt prefix visible with a one-click copy button. On current OpenAI desktop installations,
 Codex may appear inside the app named ChatGPT; choose Codex from the top-left menu
 if it is not already the default view.
 
@@ -92,19 +96,26 @@ applicability, amendments, conflicts, and current requirements before constructi
 For managed or silent deployment, the same download supports:
 
 ```powershell
-.\RhinoMCP-Windows-Setup-0.4.4.exe /CLIENT=codex /SILENT
+.\RhinoMCP-Windows-Setup-0.4.5.exe /CLIENT=codex /SILENT
 ```
 
-Valid client values are `codex`, `claude`, and `cursor`. For Codex, open Rhino and
-the desktop app opens automatically. Claude and Cursor users should open or restart
-their selected client after setup. Codex users can run `/mcp` to confirm that
-`rhino-mcp` is enabled.
+Valid client values are `codex`, `claude`, and `cursor`. For Codex, type a request
+such as `/RhinoMCP create a test cube`. The installed workflow first runs
+`ensure_rhino_ready`: if Rhino is closed it launches Rhino 8, waits for the bridge,
+and displays the live connection page in Chrome before continuing. Claude and Cursor
+users should open or restart their selected client after setup. Codex users can run
+`/mcp` to confirm that `rhino-mcp` is enabled.
+
+`/RhinoMCP` is an enforced routing prefix in the prompt, not an undocumented Codex
+menu command. Codex's supported selectable shortcut is `$rhino-mcp`. The installer
+also adds `/prompts:RhinoMCP` for Codex CLI and IDE versions that still support
+custom prompts.
 
 ## Connection dashboard
 
-Every time Rhino launches, Rhino MCP opens one dashboard tab in the Windows
-default browser. It uses whichever browser the user has chosen; Chrome is not
-required. The page shows the live state of:
+Every time Rhino launches, Rhino MCP opens one dashboard tab in Chrome. If Chrome
+is not installed, it uses the Windows default browser instead. The page shows the
+required `/RhinoMCP` prefix and the live state of:
 
 - **Rhino Bridge** — connected or stopped
 - **Codex / Claude / Cursor** — connected, waiting, or not configured
@@ -114,8 +125,8 @@ required. The page shows the live state of:
 Below the live services, **Project files** shows the exact path of the active
 Rhino model and Grasshopper definition. **Installed files** shows the Rhino
 plug-in, Grasshopper add-on, bundled MCP server, settings, regulatory database,
-AI-client configuration, and installer log with **Found**, **Missing**, or
-**Unsaved** states and a copy-path button.
+AI-client configuration, Codex routing files, and installer log with **Found**,
+**Missing**, or **Unsaved** states and a copy-path button.
 
 If Grasshopper does not finish loading, the dashboard shows a **Needs attention**
 diagnostic. It checks common plug-in locations for likely blockers and displays
@@ -195,6 +206,7 @@ shown as `WAIT`, with the exact next action, rather than as socket traces.
 The safe everyday set:
 
 - `rhino_status`
+- `ensure_rhino_ready`
 - `get_scene_summary`
 - `list_layers`
 - `list_objects`
@@ -233,7 +245,7 @@ them accidentally. Safe high-level operations are still preferred.
 Example prompt:
 
 ```text
-Create a 10 × 8 × 3 box on a layer named Massing. Dry-run it first, then create it
+/RhinoMCP Create a 10 × 8 × 3 box on a layer named Massing. Dry-run it first, then create it
 and show me a compressed viewport capture.
 ```
 
@@ -295,10 +307,11 @@ manual developer artifacts.
 ## Architecture
 
 ```text
-Codex / Claude / Cursor
+Codex `/RhinoMCP ...` / Claude / Cursor
         │ MCP stdio
         ▼
 bundled rhino-mcp.exe
+        ├── cold-start Rhino + display Chrome dashboard
         ├── offline regulation search index
         │
         │ framed, persistent localhost TCP

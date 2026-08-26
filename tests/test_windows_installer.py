@@ -19,8 +19,10 @@ def test_windows_installer_has_one_download_and_no_python_bootstrap():
 
 def test_windows_installer_configures_each_supported_client_and_grasshopper():
     installer = (ROOT / "installer" / "RhinoMCP.iss").read_text()
+    bootstrap = (ROOT / "installer" / "Install-RhinoMCP.ps1").read_text()
 
     for client in ("Codex", "Claude", "Cursor"):
         assert f"ClientPage.Add('{client}')" in installer
     assert '-Profile "grasshopper"' in installer
     assert "AfterInstall: InstallRuntime" in installer
+    assert "/RhinoMCP routing installed" in bootstrap

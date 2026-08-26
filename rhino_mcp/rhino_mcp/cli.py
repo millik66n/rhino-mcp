@@ -19,6 +19,7 @@ from .clients import (
     remove_client,
     server_spec,
 )
+from .codex_workflow import workflow_paths
 from .config import VALID_PROFILES, config_path, load_settings, save_settings
 from .diagnostics import checks_as_dict, run_doctor
 from .regulations import RegulationLibrary, resolve_database_path
@@ -111,6 +112,9 @@ def command_setup(args: argparse.Namespace) -> int:
         path = configure_client(client, spec)
         configured.append(client)
         print(f"  PASS  {client.title()} configured ({path})")
+        if client == "codex":
+            paths = workflow_paths()
+            print(f"  PASS  /RhinoMCP routing installed ({paths['skill']})")
     settings.configured_clients = sorted(set(settings.configured_clients or []) | set(configured))
     regulations = resolve_database_path(settings)
     if regulations.is_file():
@@ -124,7 +128,8 @@ def command_setup(args: argparse.Namespace) -> int:
         print("  WAIT  Regulatory library is not included in this build")
     print(
         "\nNext: open Rhino. The connection dashboard opens automatically in your "
-        "default browser. If Codex was selected, Codex opens too; start writing."
+        "browser. If Codex was selected, Codex opens too. Begin Rhino requests with "
+        "/RhinoMCP."
     )
     print("Check everything anytime with: rhino-mcp doctor")
     return 0

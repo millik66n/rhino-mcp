@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
+from .codex_workflow import configure_codex_workflow, remove_codex_workflow
 
 SERVER_NAME = "rhino-mcp"
 CLIENTS = ("codex", "claude", "cursor")
@@ -158,6 +159,7 @@ def configure_client(client: str, spec: ServerSpec | None = None) -> Path:
             raise RuntimeError(
                 result.stderr.strip() or result.stdout.strip() or "Codex setup failed"
             )
+        configure_codex_workflow()
         return path
 
     value = _load_json(path)
@@ -181,6 +183,7 @@ def remove_client(client: str) -> Path:
                 stderr=subprocess.DEVNULL,
                 check=False,
             )
+        remove_codex_workflow()
         return path
     value = _load_json(path)
     servers = value.get("mcpServers")

@@ -25,9 +25,12 @@ def test_stdio_server_lists_safe_tools_and_returns_structured_errors(tmp_path):
             assert "use the regulation library" in instructions
             assert "untrusted source data" in instructions
             assert "create_geometry" in names
+            assert "ensure_rhino_ready" in names
             assert "execute_rhino_code" not in names
             assert "search_regulations" in names
             assert "architecture_regulation_checklist" in names
+            assert "/RhinoMCP" in instructions
+            assert "ensure_rhino_ready" in instructions
             regulation_status = await session.call_tool("regulation_library_status", {})
             assert regulation_status.structuredContent["indexed_pages"] == 7896
             regulation_search = await session.call_tool(

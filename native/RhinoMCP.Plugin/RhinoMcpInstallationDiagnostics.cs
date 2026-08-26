@@ -57,6 +57,29 @@ internal static class RhinoMcpInstallationDiagnostics
                 "MCP connection entry", path, File.Exists(path), required: true));
         }
 
+        if (UserSettings.CodexConfigured)
+        {
+            string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string? configuredCodexHome = Environment.GetEnvironmentVariable("CODEX_HOME");
+            string codexHome = string.IsNullOrWhiteSpace(configuredCodexHome)
+                ? Path.Combine(home, ".codex") : configuredCodexHome;
+            string overrideGuidance = Path.Combine(codexHome, "AGENTS.override.md");
+            string guidance = File.Exists(overrideGuidance)
+                && new FileInfo(overrideGuidance).Length > 0
+                ? overrideGuidance : Path.Combine(codexHome, "AGENTS.md");
+            string skill = Path.Combine(home, ".agents", "skills", "rhino-mcp", "SKILL.md");
+            string prompt = Path.Combine(codexHome, "prompts", "RhinoMCP.md");
+            files.Add(FileItem(
+                "codex-skill", "Codex Rhino MCP skill", "$rhino-mcp startup workflow",
+                skill, File.Exists(skill), required: true));
+            files.Add(FileItem(
+                "codex-prompt", "Codex /RhinoMCP prompt", "Prompt-prefix compatibility shortcut",
+                prompt, File.Exists(prompt), required: true));
+            files.Add(FileItem(
+                "codex-guidance", "Codex routing guidance", "Requires /RhinoMCP for Rhino tools",
+                guidance, File.Exists(guidance), required: true));
+        }
+
         files.Add(FileItem(
             "install-log", "Installation log", "Installer troubleshooting details",
             installLog, File.Exists(installLog), required: false,

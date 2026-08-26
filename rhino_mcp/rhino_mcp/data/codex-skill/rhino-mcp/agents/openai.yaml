@@ -1,0 +1,11 @@
+interface:
+  display_name: "Rhino MCP"
+  short_description: "Start Rhino and run connected modeling tasks"
+  default_prompt: "Use $rhino-mcp to start Rhino, show connection status, and complete this modeling request: "
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "rhino-mcp"
+      description: "Local Rhino and Grasshopper bridge"
+policy:
+  allow_implicit_invocation: false

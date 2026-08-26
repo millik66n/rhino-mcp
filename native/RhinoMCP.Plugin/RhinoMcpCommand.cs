@@ -45,7 +45,7 @@ public sealed class RhinoMcpDashboardCommand : Command
         if (dashboard is null)
             return Result.Failure;
         dashboard.Start(UserSettings.DashboardPort);
-        if (!dashboard.OpenBrowser())
+        if (!dashboard.OpenBrowser(force: true))
             return Result.Failure;
         RhinoApp.WriteLine($"Rhino MCP dashboard: {dashboard.Url}");
         return Result.Success;

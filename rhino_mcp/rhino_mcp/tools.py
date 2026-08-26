@@ -14,6 +14,7 @@ from mcp.server.fastmcp import Image
 from .config import Settings
 from .grasshopper import GrasshopperConnection
 from .protocol import BridgeConnection, BridgeError
+from .startup import RhinoStartup
 
 
 @dataclass(slots=True)
@@ -50,7 +51,10 @@ def _error(exc: BridgeError) -> dict[str, Any]:
         "error": {
             "code": exc.__class__.__name__,
             "message": str(exc),
-            "next_step": "Open Rhino, open the Rhino MCP panel, and click Restart.",
+            "next_step": (
+                "Begin the request with /RhinoMCP so Codex can start Rhino automatically, "
+                "or run RhinoMCPRestart inside Rhino."
+            ),
         },
     }
 
@@ -65,11 +69,13 @@ class RhinoTools:
         self.app = app
         self.settings = settings
         self.connection = connection
+        self.startup = RhinoStartup(settings, connection)
         self.cache = ResponseCache(settings.cache_ttl)
         self._register()
 
     def _register(self) -> None:
         for method in (
+            self.ensure_rhino_ready,
             self.rhino_status,
             self.get_scene_summary,
             self.list_layers,
@@ -86,6 +92,15 @@ class RhinoTools:
             self.app.tool()(method)
         if self.settings.profile == "developer":
             self.app.tool()(self.execute_rhino_code)
+
+    def ensure_rhino_ready(
+        self, open_dashboard: bool = True, wait_seconds: int = 60
+    ) -> dict[str, Any]:
+        """Start Rhino if closed, wait for its bridge, and display connection status."""
+        return self.startup.ensure_ready(
+            open_dashboard=open_dashboard,
+            wait_seconds=wait_seconds,
+        )
 
     def _read(self, command: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         try:

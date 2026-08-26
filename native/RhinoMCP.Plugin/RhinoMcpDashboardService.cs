@@ -22,6 +22,7 @@ internal sealed class RhinoMcpDashboardService : IDisposable
     private TcpListener? _listener;
     private byte[] _dashboardHtml = Array.Empty<byte>();
     private string _actionToken = "";
+    private bool _browserWasOpened;
 
     public bool Running
     {
@@ -34,6 +35,7 @@ internal sealed class RhinoMcpDashboardService : IDisposable
 
     public int Port { get; private set; }
     public string Url => $"http://127.0.0.1:{Port}/";
+    public string LastBrowser { get; private set; } = "Not opened";
 
     public void Start(int preferredPort)
     {
@@ -65,12 +67,23 @@ internal sealed class RhinoMcpDashboardService : IDisposable
         }
     }
 
-    public bool OpenBrowser()
+    public bool OpenBrowser(bool force = false, bool preferChrome = true)
     {
         if (!Running)
         {
             BridgeLog.Write("The connection dashboard is not running.");
             return false;
+        }
+
+        if (_browserWasOpened && !force)
+            return true;
+
+        if (preferChrome && TryOpenChrome())
+        {
+            _browserWasOpened = true;
+            LastBrowser = "Google Chrome";
+            BridgeLog.Write("Opened the connection dashboard in Google Chrome.");
+            return true;
         }
 
         try
@@ -80,6 +93,8 @@ internal sealed class RhinoMcpDashboardService : IDisposable
                 FileName = Url,
                 UseShellExecute = true,
             });
+            _browserWasOpened = true;
+            LastBrowser = "Default browser";
             BridgeLog.Write("Opened the connection dashboard in the default browser.");
             return true;
         }
@@ -100,11 +115,53 @@ internal sealed class RhinoMcpDashboardService : IDisposable
             _cancellation?.Dispose();
             _cancellation = null;
             _actionToken = "";
+            _browserWasOpened = false;
+            LastBrowser = "Not opened";
             Port = 0;
         }
     }
 
     public void Dispose() => Stop();
+
+    private bool TryOpenChrome()
+    {
+        string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        string programFilesX86 = Environment.GetFolderPath(
+            Environment.SpecialFolder.ProgramFilesX86);
+        string[] candidates =
+        {
+            Path.Combine(local, "Google", "Chrome", "Application", "chrome.exe"),
+            Path.Combine(programFiles, "Google", "Chrome", "Application", "chrome.exe"),
+            Path.Combine(programFilesX86, "Google", "Chrome", "Application", "chrome.exe"),
+        };
+
+        foreach (string executable in candidates.Where(File.Exists))
+        {
+            if (TryStartChrome(executable))
+                return true;
+        }
+        return TryStartChrome("chrome.exe");
+    }
+
+    private bool TryStartChrome(string executable)
+    {
+        try
+        {
+            Process? process = Process.Start(new ProcessStartInfo
+            {
+                FileName = executable,
+                Arguments = $"--new-tab \"{Url}\"",
+                UseShellExecute = true,
+            });
+            process?.Dispose();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     private static TcpListener StartListener(int preferredPort)
     {

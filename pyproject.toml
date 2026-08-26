@@ -1,6 +1,6 @@
 [project]
 name = "rhino-mcp"
-version = "0.4.4"
+version = "0.4.5"
 description = "Rhino and Grasshopper integration through the Model Context Protocol"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -45,7 +45,13 @@ package-dir = {"" = "rhino_mcp"}
 where = ["rhino_mcp"]
 
 [tool.setuptools.package-data]
-rhino_mcp = ["data/*.sqlite3", "data/*.json"]
+rhino_mcp = [
+    "data/*.sqlite3",
+    "data/*.json",
+    "data/codex-prompts/*.md",
+    "data/codex-skill/rhino-mcp/*.md",
+    "data/codex-skill/rhino-mcp/agents/*.yaml",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

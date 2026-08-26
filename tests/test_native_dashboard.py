@@ -24,6 +24,8 @@ def test_dashboard_is_embedded_local_and_protects_its_only_launch_action():
     assert "X-Content-Type-Options: nosniff" in service
     assert "Content-Security-Policy:" in service
     assert "UseShellExecute = true" in service
+    assert 'LastBrowser = "Google Chrome"' in service
+    assert '"chrome.exe"' in service
     assert 'LogicalName="RhinoMCP.Dashboard.index.html"' in project
 
 
@@ -38,7 +40,7 @@ def test_dashboard_opens_once_per_rhino_launch_and_has_a_reopen_command():
     assert "ClientLauncher.OpenConfiguredCodexAsync(automatic: true)" in plugin
     assert "Dashboard.Stop();" in plugin
     assert 'EnglishName => "RhinoMCPDashboard"' in command
-    assert "dashboard.OpenBrowser()" in command
+    assert "dashboard.OpenBrowser(force: true)" in command
 
 
 def test_dashboard_page_has_live_connected_and_offline_states():
@@ -61,6 +63,9 @@ def test_dashboard_page_has_live_connected_and_offline_states():
         "Grasshopper needs attention",
         "Codex is open — start writing",
         "Open Codex",
+        "Begin every Rhino request with",
+        "/RhinoMCP",
+        "Copy /RhinoMCP",
     ):
         assert copy in html or copy in (PLUGIN / "RhinoMcpStatusHud.cs").read_text()
 
@@ -69,12 +74,25 @@ def test_dashboard_page_has_live_connected_and_offline_states():
     assert '"X-Rhino-MCP-Action": actionToken' in html
     assert 'const actionToken = "__RHINO_MCP_ACTION_TOKEN__"' in html
     assert "window.setInterval(refresh, 1000)" in html
-    assert "navigator.clipboard.writeText(path)" in html
+    assert "await copyText(path)" in html
+    assert 'await copyText("/RhinoMCP ")' in html
+    assert "document.execCommand(\"copy\")" in html
     assert "projectFilesSignature" in html
     assert "installedFilesSignature" in html
     assert 'aria-live="polite"' in html
     assert "@media (max-width: 430px)" in html
     assert not re.search(r'(?:src|href)=["\']https?://', html)
+
+
+def test_bridge_can_display_dashboard_in_chrome_for_cold_start_requests():
+    dispatcher = (PLUGIN / "RhinoCommandDispatcher.cs").read_text()
+    dashboard = (PLUGIN / "RhinoMcpDashboardService.cs").read_text()
+
+    assert '"open_dashboard" => OpenDashboard(parameters)' in dispatcher
+    assert 'GetBool(parameters, "prefer_chrome", true)' in dispatcher
+    assert 'GetBool(parameters, "force", false)' in dispatcher
+    assert "TryOpenChrome()" in dashboard
+    assert 'Arguments = $"--new-tab' in dashboard
 
 
 def test_codex_launcher_discovers_windows_store_and_desktop_installs():
@@ -137,6 +155,9 @@ def test_dashboard_inventory_is_read_only_and_explains_addon_compatibility():
         "settings",
         "regulations",
         "install-log",
+        "codex-skill",
+        "codex-prompt",
+        "codex-guidance",
     ):
         assert f'"{identifier}"' in diagnostics
     assert "possible-archicad-conflict" in diagnostics

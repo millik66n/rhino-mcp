@@ -74,8 +74,14 @@ def create_app(settings: Settings | None = None) -> FastMCP:
     app = FastMCP(
         "Rhino MCP",
         instructions=(
-            "Use Rhino MCP's safe, structured tools to inspect and modify Rhino and "
-            "Grasshopper. "
+            "Use Rhino MCP only when the current user request begins with the exact "
+            "/RhinoMCP prefix or explicitly invokes the $rhino-mcp skill. If a Rhino or "
+            "Grasshopper request is missing that routing prefix, ask the user to resend it "
+            "with /RhinoMCP and do not call these tools. For a routed request, always call "
+            "ensure_rhino_ready first with open_dashboard=true; it starts Rhino when closed, "
+            "waits for the bridge, and displays the local connection page. Continue only after "
+            "it reports ready. Then use the safe, structured tools to inspect and modify Rhino "
+            "and Grasshopper. "
             + ARCHITECTURE_INSTRUCTIONS
         ),
         lifespan=lifespan,
@@ -88,7 +94,8 @@ def create_app(settings: Settings | None = None) -> FastMCP:
     def rhino_workflow() -> str:
         """Safe, efficient workflow for editing a Rhino model."""
         return (
-            "Check rhino_status, inspect get_scene_changes, and prefer batch_geometry. "
+            "Begin the user request with /RhinoMCP. Call ensure_rhino_ready first, then "
+            "check rhino_status, inspect get_scene_changes, and prefer batch_geometry. "
             "Use dry_run for large edits. Mutations create one Rhino undo checkpoint. "
             "Use the Developer profile only when high-level tools cannot express the task. "
             + ARCHITECTURE_INSTRUCTIONS

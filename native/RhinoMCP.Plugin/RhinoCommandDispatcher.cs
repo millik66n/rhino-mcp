@@ -12,6 +12,7 @@ internal static class RhinoCommandDispatcher
     public static object Dispatch(string command, JsonElement parameters) => command switch
     {
         "health" => Health(),
+        "open_dashboard" => OpenDashboard(parameters),
         "get_scene_info" => SceneInfo(),
         "get_layers" => Layers(),
         "list_objects" => ListObjects(parameters),
@@ -42,6 +43,24 @@ internal static class RhinoCommandDispatcher
             ["document_open"] = document is not null,
             ["scene_version"] = SceneChangeTracker.Version,
             ["clients"] = RhinoBridgeService.Instance.ClientCount,
+        };
+    }
+
+    private static Dictionary<string, object?> OpenDashboard(JsonElement parameters)
+    {
+        RhinoMcpDashboardService dashboard = RhinoMcpPlugin.Instance?.Dashboard
+            ?? throw new InvalidOperationException("Rhino MCP is still starting.");
+        dashboard.Start(UserSettings.DashboardPort);
+        bool opened = dashboard.OpenBrowser(
+            force: GetBool(parameters, "force", false),
+            preferChrome: GetBool(parameters, "prefer_chrome", true));
+        if (!opened)
+            throw new InvalidOperationException("The connection dashboard could not be opened.");
+        return new Dictionary<string, object?>
+        {
+            ["opened"] = true,
+            ["browser"] = dashboard.LastBrowser,
+            ["url"] = dashboard.Url,
         };
     }
 

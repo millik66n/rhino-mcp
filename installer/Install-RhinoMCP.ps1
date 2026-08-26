@@ -65,6 +65,9 @@ try {
     Invoke-Checked -FilePath $serverPath -Arguments @(
         "setup", $Client, "--profile", $Profile, "--non-interactive"
     )
+    if ($Client -eq "codex") {
+        Write-Host "/RhinoMCP routing installed. Begin each Rhino request with /RhinoMCP."
+    }
 
     Write-Host "Running installation checks..."
     $doctorOutput = & $serverPath doctor --json 2>&1 | Out-String
@@ -80,7 +83,7 @@ try {
         server = $serverPath
     } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $AppDir "installed.json") -Encoding UTF8
 
-    Write-Host "Rhino MCP is installed. Open Rhino 8; the dashboard opens automatically and Codex opens when selected."
+    Write-Host "Rhino MCP is installed. In Codex, begin with /RhinoMCP; Rhino and the Chrome status page open automatically."
 }
 finally {
     Stop-Transcript | Out-Null

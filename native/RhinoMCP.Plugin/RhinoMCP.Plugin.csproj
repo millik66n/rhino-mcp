@@ -9,7 +9,7 @@
     <TargetExt>.rhp</TargetExt>
     <AssemblyName>RhinoMCP</AssemblyName>
     <RootNamespace>RhinoMCP</RootNamespace>
-    <Version>0.4.4</Version>
+    <Version>0.4.5</Version>
     <Title>Rhino MCP</Title>
     <Description>Automatic Rhino bridge with a local browser dashboard and viewport connection strip.</Description>
   </PropertyGroup>

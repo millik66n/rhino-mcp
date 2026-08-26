@@ -13,6 +13,7 @@ from typing import Any
 
 from . import __version__
 from .clients import CLIENTS, client_is_configured
+from .codex_workflow import codex_workflow_is_configured, workflow_paths
 from .config import Settings, config_path, load_settings
 from .grasshopper import GrasshopperConnection
 from .protocol import BridgeConnection, BridgeEndpoint, BridgeError
@@ -93,6 +94,20 @@ def run_doctor(settings: Settings | None = None) -> list[Check]:
             True,
         )
     )
+    if "codex" in (settings.configured_clients or []):
+        workflow_ready = codex_workflow_is_configured()
+        checks.append(
+            Check(
+                "Codex routing",
+                "pass" if workflow_ready else "fail",
+                (
+                    f"/RhinoMCP and $rhino-mcp ({workflow_paths()['skill']})"
+                    if workflow_ready
+                    else "run rhino-mcp setup codex"
+                ),
+                True,
+            )
+        )
 
     regulations = RegulationLibrary(settings)
     regulation_status = regulations.status()
