@@ -386,7 +386,7 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
         try
         {
             string? json = ReadGrasshopperHealthResponse();
-            if (string.IsNullOrWhiteSpace(json))
+            if (json is null || json.Length == 0)
                 return GrasshopperSnapshot.Unavailable;
             using JsonDocument document = JsonDocument.Parse(json);
             JsonElement root = document.RootElement;
