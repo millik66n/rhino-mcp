@@ -96,9 +96,13 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
     {
         StatusSnapshot status = _status;
         RhinoMcpDashboardService? dashboard = RhinoMcpPlugin.Instance?.Dashboard;
+        ClientLaunchSnapshot launch = RhinoMcpPlugin.Instance?.ClientLauncher.Snapshot
+            ?? ClientLaunchSnapshot.NotAttempted;
         RhinoApp.WriteLine($"Rhino MCP: {status.OverallText}");
         RhinoApp.WriteLine($"  Bridge: {(status.BridgeRunning ? "connected" : "stopped")}");
         RhinoApp.WriteLine($"  {status.ClientLabel}: {(status.ClientConnected ? "connected" : status.ClientWaitingText)}");
+        if (UserSettings.CodexConfigured && !status.ClientConnected)
+            RhinoApp.WriteLine($"  Codex launch: {launch.Message}");
         RhinoApp.WriteLine($"  Grasshopper: {(status.GrasshopperAvailable ? "connected" : "not available")}");
         RhinoApp.WriteLine($"  Regulations: {(status.RegulationsAvailable ? "loaded" : "not installed")}");
         RhinoApp.WriteLine($"  Ports: Rhino {UserSettings.RhinoPort}, Grasshopper {UserSettings.GrasshopperPort}");
@@ -108,6 +112,9 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
     public Dictionary<string, object?> DashboardStatus()
     {
         StatusSnapshot status = _status;
+        RhinoMcpClientLauncher? launcher = RhinoMcpPlugin.Instance?.ClientLauncher;
+        ClientLaunchSnapshot clientLaunch = launcher?.Snapshot
+            ?? ClientLaunchSnapshot.NotAttempted;
         object[] issues = RhinoMcpInstallationDiagnostics.CompatibilityIssues(
             status.GrasshopperAvailable);
         bool grasshopperDanger = issues.Any(issue =>
@@ -133,8 +140,32 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
         else if (!status.ClientConnected)
         {
             overallState = "waiting";
-            title = $"Waiting for {status.ClientLabel}";
-            message = $"Open or restart {status.ClientLabel}, then start a prompt.";
+            if (UserSettings.CodexConfigured && clientLaunch.State == "opening")
+            {
+                title = "Opening Codex…";
+                message = "When Codex appears, start writing what you want Rhino to create or change.";
+            }
+            else if (UserSettings.CodexConfigured && ClientLaunchReady(clientLaunch))
+            {
+                title = "Codex is open — start writing";
+                message = "Type your Rhino request in Codex. This page turns green as soon as the prompt connects.";
+            }
+            else if (UserSettings.CodexConfigured
+                && (clientLaunch.State == "not_found" || clientLaunch.State == "failed"))
+            {
+                title = "Codex needs attention";
+                message = clientLaunch.Message;
+            }
+            else if (UserSettings.CodexConfigured && clientLaunch.State == "disabled")
+            {
+                title = "Ready for Codex";
+                message = "Click Open Codex below, then start writing your Rhino request.";
+            }
+            else
+            {
+                title = $"Waiting for {status.ClientLabel}";
+                message = $"Open or restart {status.ClientLabel}, then start a prompt.";
+            }
         }
         else if (UserSettings.Profile == "grasshopper" && !status.GrasshopperAvailable)
         {
@@ -166,8 +197,8 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
                     status.BridgeRunning ? "Connected" : "Stopped",
                     status.BridgeRunning ? "success" : "danger"),
                 Service(
-                    "client", status.ClientLabel, ClientDescription(status),
-                    status.ClientConnected ? "Connected" : status.ClientConfigured ? "Waiting" : "Not configured",
+                    "client", status.ClientLabel, ClientDescription(status, clientLaunch),
+                    ClientStatusText(status, clientLaunch),
                     status.ClientConnected ? "success" : status.ClientConfigured ? "warning" : "danger"),
                 Service(
                     "grasshopper", "Grasshopper",
@@ -194,6 +225,14 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
             ["issues"] = issues,
             ["project_files"] = _projectFiles,
             ["installed_files"] = RhinoMcpInstallationDiagnostics.InstalledFiles(),
+            ["client_launch"] = launcher?.DashboardStatus()
+                ?? new Dictionary<string, object?>
+                {
+                    ["state"] = "unavailable",
+                    ["message"] = "Rhino MCP is still starting.",
+                    ["can_open"] = false,
+                    ["auto_launch_enabled"] = UserSettings.AutoLaunchClient,
+                },
         };
     }
 
@@ -212,6 +251,13 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
         ["issues"] = Array.Empty<object>(),
         ["project_files"] = Array.Empty<object>(),
         ["installed_files"] = Array.Empty<object>(),
+        ["client_launch"] = new Dictionary<string, object?>
+        {
+            ["state"] = "unavailable",
+            ["message"] = "Open Rhino before opening Codex from this page.",
+            ["can_open"] = false,
+            ["auto_launch_enabled"] = false,
+        },
     };
 
     protected override void DrawForeground(DrawEventArgs e)
@@ -286,14 +332,38 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
         ["tone"] = tone,
     };
 
-    private static string ClientDescription(StatusSnapshot status)
+    private static string ClientDescription(
+        StatusSnapshot status,
+        ClientLaunchSnapshot clientLaunch)
     {
         if (!status.ClientConfigured)
             return "Choose an AI client in Rhino MCP setup.";
-        return status.ClientConnected
-            ? $"{status.ClientLabel} is connected and ready."
-            : $"{status.ClientLabel} is configured but has not connected yet.";
+        if (status.ClientConnected)
+            return $"{status.ClientLabel} is connected and ready.";
+        if (UserSettings.CodexConfigured && ClientLaunchReady(clientLaunch))
+            return "Codex is open. Start a prompt to connect it to Rhino.";
+        if (UserSettings.CodexConfigured && clientLaunch.State == "opening")
+            return "Codex is opening now.";
+        return $"{status.ClientLabel} is configured but has not connected yet.";
     }
+
+    private static string ClientStatusText(
+        StatusSnapshot status,
+        ClientLaunchSnapshot clientLaunch)
+    {
+        if (status.ClientConnected)
+            return "Connected";
+        if (!status.ClientConfigured)
+            return "Not configured";
+        if (UserSettings.CodexConfigured && clientLaunch.State == "opening")
+            return "Opening";
+        if (UserSettings.CodexConfigured && ClientLaunchReady(clientLaunch))
+            return "Start writing";
+        return "Waiting";
+    }
+
+    private static bool ClientLaunchReady(ClientLaunchSnapshot snapshot) =>
+        snapshot.State == "opened" || snapshot.State == "already_running";
 
     private static string TitleCase(string value)
     {
@@ -337,6 +407,8 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
         string configuredClient = UserSettings.Client;
         bool clientConfigured = configuredClient != "Not configured";
         string clientLabel = ClientLabel(configuredClient);
+        ClientLaunchSnapshot clientLaunch = RhinoMcpPlugin.Instance?.ClientLauncher.Snapshot
+            ?? ClientLaunchSnapshot.NotAttempted;
         GrasshopperSnapshot grasshopper = ReadGrasshopperStatus(probeGrasshopper);
         bool grasshopperAvailable = grasshopper.Available;
         bool regulationsAvailable = UserSettings.RegulationsAvailable;
@@ -356,7 +428,9 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
                 bridgeRunning, clientConnected, clientConfigured, clientLabel,
                 grasshopperAvailable, regulationsAvailable, grasshopper.DefinitionOpen,
                 grasshopper.DefinitionName, grasshopper.DefinitionPath,
-                $"WAITING FOR {clientLabel.ToUpperInvariant()}", Amber);
+                UserSettings.CodexConfigured && ClientLaunchReady(clientLaunch)
+                    ? "CODEX OPEN — START WRITING"
+                    : $"WAITING FOR {clientLabel.ToUpperInvariant()}", Amber);
         if (UserSettings.Profile == "grasshopper" && !grasshopperAvailable)
             return new StatusSnapshot(
                 bridgeRunning, clientConnected, clientConfigured, clientLabel,

@@ -35,6 +35,7 @@ class Settings:
     image_quality: int = 80
     page_size: int = 100
     cache_ttl: float = 0.75
+    auto_launch_client: bool = True
     regulations_db: str | None = None
     configured_clients: list[str] | None = None
 

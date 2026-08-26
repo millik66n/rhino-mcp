@@ -23,6 +23,7 @@ def test_status_strip_is_drawn_only_in_the_active_modeling_view():
     assert "Draw2dText" in hud
     assert '"CONNECTED — READY"' in hud
     assert '"WAITING FOR {clientLabel.ToUpperInvariant()}"' in hud
+    assert '"CODEX OPEN — START WRITING"' in hud
 
 
 def test_status_strip_reports_each_service_and_can_be_hidden():

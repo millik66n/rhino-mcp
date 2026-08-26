@@ -6,7 +6,7 @@ The Windows experience is deliberately short:
 
 1. Download and run **RhinoMCP-Windows-Setup**.
 2. Choose Codex, Claude, or Cursor.
-3. Open Rhino, open Grasshopper, and start prompting.
+3. Open Rhino. If Codex was chosen, it opens automatically; start writing.
 
 No Rhino Package Manager, repository clone, Python installation, `uv`, Conda
 environment, Rhino Python script, Grasshopper file, Python-path change, terminal
@@ -34,7 +34,13 @@ installer.
 
 When Rhino starts, it automatically opens a local connection dashboard in the
 Windows default browser. It works without internet access and does not require a
-separate app, service, or browser extension.
+separate service or browser extension. If Codex was selected during setup, Rhino
+also opens the installed Codex/ChatGPT desktop app after startup. If it is already
+running, Rhino brings its window forward instead of opening a duplicate. The
+dashboard says **Codex is open — start writing** and includes an **Open Codex**
+button in case the app is closed later. On current OpenAI desktop installations,
+Codex may appear inside the app named ChatGPT; choose Codex from the top-left menu
+if it is not already the default view.
 
 ## Architecture regulation checks
 
@@ -86,12 +92,13 @@ applicability, amendments, conflicts, and current requirements before constructi
 For managed or silent deployment, the same download supports:
 
 ```powershell
-.\RhinoMCP-Windows-Setup-0.4.3.exe /CLIENT=codex /SILENT
+.\RhinoMCP-Windows-Setup-0.4.4.exe /CLIENT=codex /SILENT
 ```
 
-Valid client values are `codex`, `claude`, and `cursor`. Restart the selected AI
-client after setup. Codex users can run `/mcp` to confirm that `rhino-mcp` is
-enabled.
+Valid client values are `codex`, `claude`, and `cursor`. For Codex, open Rhino and
+the desktop app opens automatically. Claude and Cursor users should open or restart
+their selected client after setup. Codex users can run `/mcp` to confirm that
+`rhino-mcp` is enabled.
 
 ## Connection dashboard
 
@@ -123,9 +130,11 @@ automatically. The tab can be closed at any time. Run `RhinoMCPDashboard` in Rhi
 to open it again.
 
 The default address is `http://127.0.0.1:9877/`. It is served directly by the Rhino
-plug-in, binds only to this computer, is read-only, loads no web assets, and sends
-nothing to the internet. If that port is already occupied, Rhino MCP chooses a
-private local fallback automatically and opens the correct address.
+plug-in, binds only to this computer, loads no web assets, and sends nothing to the
+internet. Status and file information is read-only. Its only action is the explicit
+**Open Codex** button, protected by a private per-launch token; it opens the desktop
+app and never edits a model or file. If that port is already occupied, Rhino MCP
+chooses a private local fallback automatically and opens the correct address.
 
 ## What appears in Rhino
 
@@ -134,8 +143,9 @@ active modeling viewport every time Rhino launches. It stays visible without
 taking up side-panel space, follows the active viewport, and appears again on the
 next Rhino launch even if it was hidden during the previous session.
 
-The headline says **CONNECTED — READY**, **RHINO READY — GH OFFLINE**,
-**WAITING FOR CODEX/CLAUDE/CURSOR**, **SETUP NEEDED**, or **BRIDGE STOPPED**.
+The headline says **CONNECTED — READY**, **CODEX OPEN — START WRITING**,
+**RHINO READY — GH OFFLINE**, **WAITING FOR CODEX/CLAUDE/CURSOR**, **SETUP
+NEEDED**, or **BRIDGE STOPPED**.
 Four live dots show:
 
 - **Bridge** — green when Rhino is listening
@@ -170,6 +180,8 @@ rhino-mcp update
 rhino-mcp uninstall [--all]
 rhino-mcp config [codex|claude|cursor]
 rhino-mcp config --profile basic|grasshopper|developer
+rhino-mcp config --auto-launch-client
+rhino-mcp config --no-auto-launch-client
 ```
 
 `doctor` reports pass/fail/wait states for the package, settings, every AI client,
@@ -292,7 +304,7 @@ bundled rhino-mcp.exe
         │ framed, persistent localhost TCP
         ▼
 RhinoMCP.rhp ── Rhino document + visible viewport status strip
-        ├── read-only browser dashboard at 127.0.0.1
+        ├── local status dashboard + protected Open Codex action
         │
         └── RhinoMCP.Grasshopper.gha (persistent localhost HTTP)
 ```

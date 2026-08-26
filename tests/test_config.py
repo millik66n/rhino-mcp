@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from rhino_mcp.cli import main
 from rhino_mcp.config import Settings, load_settings, save_settings
 
 
@@ -16,6 +17,7 @@ def test_settings_round_trip(tmp_path):
     actual = load_settings(path)
     assert actual == expected
     assert json.loads(path.read_text())["profile"] == "grasshopper"
+    assert json.loads(path.read_text())["auto_launch_client"] is True
 
 
 def test_settings_clamp_response_sizes():
@@ -28,6 +30,16 @@ def test_settings_clamp_response_sizes():
 def test_invalid_profile_is_rejected():
     with pytest.raises(ValueError, match="profile"):
         Settings(profile="unsafe")
+
+
+def test_config_can_disable_and_reenable_codex_auto_launch(tmp_path, monkeypatch):
+    monkeypatch.setenv("RHINO_MCP_HOME", str(tmp_path))
+
+    assert main(["config", "--no-auto-launch-client"]) == 0
+    assert load_settings().auto_launch_client is False
+
+    assert main(["config", "--auto-launch-client"]) == 0
+    assert load_settings().auto_launch_client is True
 
 
 @pytest.mark.parametrize("field", ["rhino_port", "grasshopper_port", "dashboard_port"])

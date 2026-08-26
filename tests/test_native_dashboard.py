@@ -6,7 +6,7 @@ PLUGIN = ROOT / "native" / "RhinoMCP.Plugin"
 GRASSHOPPER = ROOT / "native" / "RhinoMCP.Grasshopper"
 
 
-def test_dashboard_is_embedded_local_only_and_read_only():
+def test_dashboard_is_embedded_local_and_protects_its_only_launch_action():
     service = (PLUGIN / "RhinoMcpDashboardService.cs").read_text()
     project = (PLUGIN / "RhinoMCP.Plugin.csproj").read_text()
 
@@ -14,7 +14,12 @@ def test_dashboard_is_embedded_local_only_and_read_only():
     assert "TcpListener" in service
     assert "HttpListener" not in service
     assert 'method != "GET" && !headOnly' in service
-    assert '"Allow: GET, HEAD\\r\\n"' in service
+    assert 'method == "POST" && path == "/api/open-codex"' in service
+    assert '"X-Rhino-MCP-Action"' in service
+    assert 'host, $"127.0.0.1:{Port}"' in service
+    assert 'HeaderValue(request, "Origin")' in service
+    assert 'Guid.NewGuid().ToString("N")' in service
+    assert '"Allow: GET, HEAD, POST\\r\\n"' in service
     assert "Cache-Control: no-store" in service
     assert "X-Content-Type-Options: nosniff" in service
     assert "Content-Security-Policy:" in service
@@ -30,6 +35,7 @@ def test_dashboard_opens_once_per_rhino_launch_and_has_a_reopen_command():
     assert "RhinoApp.Idle += ShowStatusOnStartup;" in plugin
     assert "RhinoApp.Idle -= ShowStatusOnStartup;" in plugin
     assert "Dashboard.OpenBrowser();" in plugin
+    assert "ClientLauncher.OpenConfiguredCodexAsync(automatic: true)" in plugin
     assert "Dashboard.Stop();" in plugin
     assert 'EnglishName => "RhinoMCPDashboard"' in command
     assert "dashboard.OpenBrowser()" in command
@@ -53,10 +59,15 @@ def test_dashboard_page_has_live_connected_and_offline_states():
         "Installed files",
         "Copy path",
         "Grasshopper needs attention",
+        "Codex is open — start writing",
+        "Open Codex",
     ):
         assert copy in html or copy in (PLUGIN / "RhinoMcpStatusHud.cs").read_text()
 
     assert 'fetch("/api/status"' in html
+    assert 'fetch("/api/open-codex"' in html
+    assert '"X-Rhino-MCP-Action": actionToken' in html
+    assert 'const actionToken = "__RHINO_MCP_ACTION_TOKEN__"' in html
     assert "window.setInterval(refresh, 1000)" in html
     assert "navigator.clipboard.writeText(path)" in html
     assert "projectFilesSignature" in html
@@ -64,6 +75,25 @@ def test_dashboard_page_has_live_connected_and_offline_states():
     assert 'aria-live="polite"' in html
     assert "@media (max-width: 430px)" in html
     assert not re.search(r'(?:src|href)=["\']https?://', html)
+
+
+def test_codex_launcher_discovers_windows_store_and_desktop_installs():
+    launcher = (PLUGIN / "RhinoMcpClientLauncher.cs").read_text()
+    settings = (PLUGIN / "UserSettings.cs").read_text()
+
+    for evidence in (
+        'Process.GetProcessesByName(processName)',
+        'Environment.SpecialFolder.StartMenu',
+        'Environment.SpecialFolder.CommonStartMenu',
+        '"Codex.exe"',
+        '"ChatGPT.exe"',
+        'Get-StartApps',
+        "shell:AppsFolder",
+        'SetForegroundWindow',
+    ):
+        assert evidence in launcher
+    assert 'ReadBool("auto_launch_client", true)' in settings
+    assert '"codex", StringComparer.OrdinalIgnoreCase' in settings
 
 
 def test_status_api_reports_all_services_and_local_details():
@@ -80,6 +110,7 @@ def test_status_api_reports_all_services_and_local_details():
     assert '"project_files"' in hud
     assert '"installed_files"' in hud
     assert '"issues"' in hud
+    assert '"client_launch"' in hud
 
 
 def test_dashboard_reports_active_project_and_grasshopper_definition_paths():

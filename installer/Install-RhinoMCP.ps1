@@ -80,7 +80,7 @@ try {
         server = $serverPath
     } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $AppDir "installed.json") -Encoding UTF8
 
-    Write-Host "Rhino MCP is installed. Open Rhino 8; the connection dashboard opens automatically in your default browser."
+    Write-Host "Rhino MCP is installed. Open Rhino 8; the dashboard opens automatically and Codex opens when selected."
 }
 finally {
     Stop-Transcript | Out-Null

@@ -10,6 +10,7 @@ public sealed class RhinoMcpPlugin : PlugIn
     public static RhinoMcpPlugin? Instance { get; private set; }
     internal RhinoMcpStatusHud StatusHud { get; } = new();
     internal RhinoMcpDashboardService Dashboard { get; } = new();
+    internal RhinoMcpClientLauncher ClientLauncher { get; } = new();
 
     public RhinoMcpPlugin() => Instance = this;
 
@@ -31,6 +32,7 @@ public sealed class RhinoMcpPlugin : PlugIn
         RhinoApp.Idle -= ShowStatusOnStartup;
         StatusHud.Start();
         Dashboard.OpenBrowser();
+        _ = ClientLauncher.OpenConfiguredCodexAsync(automatic: true);
     }
 
     protected override void OnShutdown()

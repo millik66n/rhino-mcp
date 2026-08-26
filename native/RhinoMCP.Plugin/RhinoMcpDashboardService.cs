@@ -8,17 +8,20 @@ using System.Text.Json;
 namespace RhinoMCP;
 
 /// <summary>
-/// A tiny, read-only HTTP server for the local connection dashboard.
-/// It deliberately binds only to loopback and ships every asset inside the plug-in.
+/// A tiny HTTP server for the local connection dashboard. It binds only to
+/// loopback, ships every asset inside the plug-in, and protects its single
+/// launch action with a per-process token embedded in the local page.
 /// </summary>
 internal sealed class RhinoMcpDashboardService : IDisposable
 {
     private const int MaxRequestBytes = 16 * 1024;
     private const string DashboardResource = "RhinoMCP.Dashboard.index.html";
+    private const string ActionTokenPlaceholder = "__RHINO_MCP_ACTION_TOKEN__";
     private readonly object _sync = new();
     private CancellationTokenSource? _cancellation;
     private TcpListener? _listener;
     private byte[] _dashboardHtml = Array.Empty<byte>();
+    private string _actionToken = "";
 
     public bool Running
     {
@@ -41,7 +44,8 @@ internal sealed class RhinoMcpDashboardService : IDisposable
 
             try
             {
-                _dashboardHtml = LoadDashboardHtml();
+                _actionToken = Guid.NewGuid().ToString("N");
+                _dashboardHtml = LoadDashboardHtml(_actionToken);
                 _cancellation = new CancellationTokenSource();
                 _listener = StartListener(preferredPort);
                 Port = ((IPEndPoint)_listener.LocalEndpoint).Port;
@@ -54,6 +58,7 @@ internal sealed class RhinoMcpDashboardService : IDisposable
                 _listener = null;
                 _cancellation?.Dispose();
                 _cancellation = null;
+                _actionToken = "";
                 Port = 0;
                 BridgeLog.Write($"Could not start the connection dashboard: {exception.Message}");
             }
@@ -94,6 +99,7 @@ internal sealed class RhinoMcpDashboardService : IDisposable
             _listener = null;
             _cancellation?.Dispose();
             _cancellation = null;
+            _actionToken = "";
             Port = 0;
         }
     }
@@ -154,20 +160,38 @@ internal sealed class RhinoMcpDashboardService : IDisposable
                     return;
                 }
 
-                string method = parts[0].ToUpperInvariant();
-                bool headOnly = method == "HEAD";
-                if (method != "GET" && !headOnly)
+                string host = HeaderValue(request, "Host");
+                if (!string.Equals(
+                    host, $"127.0.0.1:{Port}", StringComparison.OrdinalIgnoreCase))
                 {
                     await WriteTextAsync(
-                        stream, 405, "Method Not Allowed", "Only GET and HEAD are supported.",
-                        false, cancellation, "Allow: GET, HEAD\r\n").ConfigureAwait(false);
+                        stream, 421, "Misdirected Request",
+                        "Use the private Rhino MCP dashboard address opened by Rhino.",
+                        false, cancellation).ConfigureAwait(false);
                     return;
                 }
 
+                string method = parts[0].ToUpperInvariant();
                 string path = parts[1];
                 int queryStart = path.IndexOf('?');
                 if (queryStart >= 0)
                     path = path.Substring(0, queryStart);
+
+                if (method == "POST" && path == "/api/open-codex")
+                {
+                    await OpenCodexAsync(stream, request, cancellation).ConfigureAwait(false);
+                    return;
+                }
+
+                bool headOnly = method == "HEAD";
+                if (method != "GET" && !headOnly)
+                {
+                    await WriteTextAsync(
+                        stream, 405, "Method Not Allowed",
+                        "Only GET, HEAD, and the protected Codex launch action are supported.",
+                        false, cancellation, "Allow: GET, HEAD, POST\r\n").ConfigureAwait(false);
+                    return;
+                }
 
                 if (path == "/" || path == "/index.html")
                 {
@@ -209,6 +233,46 @@ internal sealed class RhinoMcpDashboardService : IDisposable
         }
     }
 
+    private async Task OpenCodexAsync(
+        NetworkStream stream,
+        string request,
+        CancellationToken cancellation)
+    {
+        string suppliedToken = HeaderValue(request, "X-Rhino-MCP-Action");
+        string origin = HeaderValue(request, "Origin");
+        string expectedToken;
+        lock (_sync)
+            expectedToken = _actionToken;
+        if ((!string.IsNullOrWhiteSpace(origin)
+                && !string.Equals(origin, Url.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+            || string.IsNullOrWhiteSpace(expectedToken)
+            || !string.Equals(suppliedToken, expectedToken, StringComparison.Ordinal))
+        {
+            await WriteTextAsync(
+                stream, 403, "Forbidden", "The local dashboard action token is invalid.",
+                false, cancellation).ConfigureAwait(false);
+            return;
+        }
+
+        RhinoMcpClientLauncher? launcher = RhinoMcpPlugin.Instance?.ClientLauncher;
+        if (launcher is null)
+        {
+            await WriteTextAsync(
+                stream, 503, "Service Unavailable", "Rhino MCP is still starting.",
+                false, cancellation).ConfigureAwait(false);
+            return;
+        }
+
+        ClientLaunchSnapshot result = await launcher
+            .OpenConfiguredCodexAsync(automatic: false).ConfigureAwait(false);
+        byte[] body = JsonSerializer.SerializeToUtf8Bytes(launcher.DashboardStatus());
+        await WriteResponseAsync(
+            stream, result.Succeeded ? 200 : 409,
+            result.Succeeded ? "OK" : "Conflict",
+            "application/json; charset=utf-8", body, false, cancellation)
+            .ConfigureAwait(false);
+    }
+
     private static async Task<string> ReadRequestAsync(
         NetworkStream stream, CancellationToken cancellation)
     {
@@ -237,6 +301,17 @@ internal sealed class RhinoMcpDashboardService : IDisposable
                 return true;
         }
         return false;
+    }
+
+    private static string HeaderValue(string request, string name)
+    {
+        string prefix = name + ":";
+        foreach (string line in request.Split(new[] { "\r\n" }, StringSplitOptions.None))
+        {
+            if (line.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return line.Substring(prefix.Length).Trim();
+        }
+        return "";
     }
 
     private static Task WriteTextAsync(
@@ -280,14 +355,16 @@ internal sealed class RhinoMcpDashboardService : IDisposable
             await stream.WriteAsync(body, 0, body.Length, cancellation).ConfigureAwait(false);
     }
 
-    private static byte[] LoadDashboardHtml()
+    private static byte[] LoadDashboardHtml(string actionToken)
     {
         Assembly assembly = typeof(RhinoMcpDashboardService).Assembly;
         using Stream? stream = assembly.GetManifestResourceStream(DashboardResource);
         if (stream is null)
             throw new InvalidOperationException("The embedded dashboard page is missing.");
-        using MemoryStream buffer = new();
-        stream.CopyTo(buffer);
-        return buffer.ToArray();
+        using StreamReader reader = new(stream, Encoding.UTF8);
+        string html = reader.ReadToEnd();
+        if (!html.Contains(ActionTokenPlaceholder))
+            throw new InvalidOperationException("The dashboard action token placeholder is missing.");
+        return Encoding.UTF8.GetBytes(html.Replace(ActionTokenPlaceholder, actionToken));
     }
 }

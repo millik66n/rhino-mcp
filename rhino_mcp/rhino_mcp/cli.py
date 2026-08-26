@@ -49,6 +49,12 @@ def build_parser() -> argparse.ArgumentParser:
     config.add_argument("--image-size", type=int)
     config.add_argument("--image-quality", type=int)
     config.add_argument("--regulations-db", type=Path)
+    config.add_argument(
+        "--auto-launch-client",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Open Codex automatically when Rhino starts",
+    )
 
     regulations = commands.add_parser(
         "regulations", help="Check or search the local architecture regulation library"
@@ -118,7 +124,7 @@ def command_setup(args: argparse.Namespace) -> int:
         print("  WAIT  Regulatory library is not included in this build")
     print(
         "\nNext: open Rhino. The connection dashboard opens automatically in your "
-        "default browser; then restart your AI client."
+        "default browser. If Codex was selected, Codex opens too; start writing."
     )
     print("Check everything anytime with: rhino-mcp doctor")
     return 0
@@ -140,6 +146,8 @@ def command_config(args: argparse.Namespace) -> int:
         if not args.regulations_db.is_file():
             raise ValueError(f"regulation database does not exist: {args.regulations_db}")
         settings.regulations_db = str(args.regulations_db.resolve())
+    if args.auto_launch_client is not None:
+        settings.auto_launch_client = args.auto_launch_client
     settings.__post_init__()
     path = save_settings(settings)
     print(f"Settings: {path}")
@@ -174,6 +182,7 @@ def command_status(as_json: bool) -> int:
             "dashboard_port": settings.dashboard_port,
             "image_max_size": settings.image_max_size,
             "image_quality": settings.image_quality,
+            "auto_launch_client": settings.auto_launch_client,
             "regulations_db": settings.regulations_db,
         }
         print(json.dumps(payload, indent=2))
@@ -182,6 +191,7 @@ def command_status(as_json: bool) -> int:
     print(f"Rhino bridge: {settings.host}:{settings.rhino_port}")
     print(f"Grasshopper bridge: {settings.host}:{settings.grasshopper_port}")
     print(f"Status dashboard: http://{settings.host}:{settings.dashboard_port}/")
+    print(f"Open Codex with Rhino: {'yes' if settings.auto_launch_client else 'no'}")
     print(f"Images: max {settings.image_max_size}px, quality {settings.image_quality}")
     regulations = RegulationLibrary(settings)
     regulation_status = regulations.status()

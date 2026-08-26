@@ -10,8 +10,11 @@ internal static class UserSettings
     public static int RhinoPort => ReadInt("rhino_port", 9876);
     public static int GrasshopperPort => ReadInt("grasshopper_port", 9999);
     public static int DashboardPort => ReadInt("dashboard_port", 9877);
+    public static bool AutoLaunchClient => ReadBool("auto_launch_client", true);
     public static string Profile => ReadString("profile", "basic");
     public static string[] ConfiguredClients => ReadClients();
+    public static bool CodexConfigured => ConfiguredClients.Contains(
+        "codex", StringComparer.OrdinalIgnoreCase);
     public static string Client
     {
         get
@@ -49,6 +52,19 @@ internal static class UserSettings
         JsonElement? root = ReadRoot();
         return root is { } value && value.TryGetProperty(key, out JsonElement property)
             ? property.GetString() ?? fallback : fallback;
+    }
+
+    private static bool ReadBool(string key, bool fallback)
+    {
+        JsonElement? root = ReadRoot();
+        if (root is not { } value || !value.TryGetProperty(key, out JsonElement property))
+            return fallback;
+        return property.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            _ => fallback,
+        };
     }
 
     private static string[] ReadClients()
