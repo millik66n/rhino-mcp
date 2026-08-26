@@ -1,6 +1,6 @@
 ---
 name: Rhino-MCP-Easy
-version: 0.4.2
+version: 0.4.3
 authors:
 - millik66n
 description: One-click Rhino and Grasshopper integration for Codex, Claude, and Cursor.

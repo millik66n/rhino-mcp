@@ -20,6 +20,7 @@ public sealed class RhinoMcpPlugin : PlugIn
         SceneChangeTracker.Start();
         RhinoBridgeService.Instance.Start(UserSettings.RhinoPort);
         Dashboard.Start(UserSettings.DashboardPort);
+        _ = Task.Run(RhinoMcpInstallationDiagnostics.RefreshCompatibilityScan);
         BridgeLog.Write("Rhino bridge started automatically.");
         RhinoApp.Idle += ShowStatusOnStartup;
         return LoadReturnCode.Success;

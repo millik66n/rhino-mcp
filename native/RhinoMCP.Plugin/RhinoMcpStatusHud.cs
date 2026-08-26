@@ -1,5 +1,6 @@
 using System.Drawing;
-using System.Net.Sockets;
+using System.Net.Http;
+using System.Text.Json;
 using Rhino;
 using Rhino.Display;
 using Rhino.Geometry;
@@ -16,14 +17,18 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
     private static readonly Color Border = Color.FromArgb(255, 78, 86, 97);
     private static readonly Color PrimaryText = Color.FromArgb(255, 244, 247, 250);
     private static readonly Color SecondaryText = Color.FromArgb(255, 190, 198, 209);
-    private static readonly Color Muted = Color.FromArgb(255, 137, 145, 157);
     private static readonly Color Green = Color.FromArgb(255, 52, 190, 116);
     private static readonly Color Amber = Color.FromArgb(255, 235, 168, 55);
     private static readonly Color Red = Color.FromArgb(255, 226, 82, 82);
+    private static readonly HttpClient GrasshopperHealthClient = new()
+    {
+        Timeout = TimeSpan.FromMilliseconds(350),
+    };
 
     private readonly object _sync = new();
     private System.Threading.Timer? _timer;
     private volatile StatusSnapshot _status = StatusSnapshot.Empty;
+    private volatile object[] _projectFiles = Array.Empty<object>();
     private int _polling;
     private int _suppressDrawing;
 
@@ -40,6 +45,7 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
             }
 
             _status = ReadStatus(probeGrasshopper: false);
+            _projectFiles = ReadProjectFiles(_status);
             Enabled = true;
             _timer = new System.Threading.Timer(PollStatus, null, 0, 1000);
         }
@@ -97,7 +103,7 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
         RhinoApp.WriteLine($"Rhino MCP: {status.OverallText}");
         RhinoApp.WriteLine($"  Bridge: {(status.BridgeRunning ? "connected" : "stopped")}");
         RhinoApp.WriteLine($"  {status.ClientLabel}: {(status.ClientConnected ? "connected" : status.ClientWaitingText)}");
-        RhinoApp.WriteLine($"  Grasshopper: {(status.GrasshopperAvailable ? "connected" : "not open")}");
+        RhinoApp.WriteLine($"  Grasshopper: {(status.GrasshopperAvailable ? "connected" : "not available")}");
         RhinoApp.WriteLine($"  Regulations: {(status.RegulationsAvailable ? "loaded" : "not installed")}");
         RhinoApp.WriteLine($"  Ports: Rhino {UserSettings.RhinoPort}, Grasshopper {UserSettings.GrasshopperPort}");
         RhinoApp.WriteLine($"  Dashboard: {(dashboard?.Running == true ? dashboard.Url : "not running")}");
@@ -106,6 +112,13 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
     public Dictionary<string, object?> DashboardStatus()
     {
         StatusSnapshot status = _status;
+        object[] issues = RhinoMcpInstallationDiagnostics.CompatibilityIssues(
+            status.GrasshopperAvailable);
+        bool grasshopperDanger = issues.Any(issue =>
+            issue is Dictionary<string, object?> value
+            && value.TryGetValue("tone", out object? tone)
+            && string.Equals(tone?.ToString(), "danger",
+                StringComparison.Ordinal));
         string overallState;
         string title;
         string message;
@@ -126,6 +139,12 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
             overallState = "waiting";
             title = $"Waiting for {status.ClientLabel}";
             message = $"Open or restart {status.ClientLabel}, then start a prompt.";
+        }
+        else if (UserSettings.Profile == "grasshopper" && !status.GrasshopperAvailable)
+        {
+            overallState = "attention";
+            title = "Rhino connected — Grasshopper needs attention";
+            message = "The Rhino bridge is ready, but the Grasshopper bridge did not start. See the diagnostic and file paths below.";
         }
         else
         {
@@ -158,9 +177,9 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
                     "grasshopper", "Grasshopper",
                     status.GrasshopperAvailable
                         ? "Grasshopper is open and available."
-                        : "Grasshopper is not currently open.",
-                    status.GrasshopperAvailable ? "Connected" : "Not open",
-                    status.GrasshopperAvailable ? "success" : "neutral"),
+                        : "Grasshopper is closed or component loading stopped before the Rhino MCP bridge started.",
+                    status.GrasshopperAvailable ? "Connected" : "Not available",
+                    status.GrasshopperAvailable ? "success" : grasshopperDanger ? "danger" : "warning"),
                 Service(
                     "regulations", "Regulations",
                     status.RegulationsAvailable
@@ -176,6 +195,9 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
                 ["network"] = "127.0.0.1 only",
                 ["refresh"] = "Live status refresh",
             },
+            ["issues"] = issues,
+            ["project_files"] = _projectFiles,
+            ["installed_files"] = RhinoMcpInstallationDiagnostics.InstalledFiles(),
         };
     }
 
@@ -191,6 +213,9 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
         },
         ["services"] = Array.Empty<object>(),
         ["details"] = new Dictionary<string, object?>(),
+        ["issues"] = Array.Empty<object>(),
+        ["project_files"] = Array.Empty<object>(),
+        ["installed_files"] = Array.Empty<object>(),
     };
 
     protected override void DrawForeground(DrawEventArgs e)
@@ -229,7 +254,7 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
         if (compact)
         {
             DrawIndicator(e, left + 17, top + 69, "Grasshopper",
-                status.GrasshopperAvailable ? Green : Muted);
+                status.GrasshopperAvailable ? Green : Red);
             DrawIndicator(e, left + 166, top + 69, "Rules",
                 status.RegulationsAvailable ? Green : Red);
             e.Display.Draw2dText(
@@ -239,7 +264,7 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
         else
         {
             DrawIndicator(e, left + 242, itemTop, "Grasshopper",
-                status.GrasshopperAvailable ? Green : Muted);
+                status.GrasshopperAvailable ? Green : Red);
             DrawIndicator(e, left + 388, itemTop, "Rules",
                 status.RegulationsAvailable ? Green : Red);
             e.Display.Draw2dText(
@@ -291,8 +316,13 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
             StatusSnapshot next = ReadStatus(probeGrasshopper: true);
             StatusSnapshot previous = _status;
             _status = next;
-            if (!next.SameAs(previous))
-                RhinoApp.InvokeOnUiThread((Action)Redraw);
+            bool changed = !next.SameAs(previous);
+            RhinoApp.InvokeOnUiThread((Action)(() =>
+            {
+                _projectFiles = ReadProjectFiles(next);
+                if (changed)
+                    Redraw();
+            }));
         }
         catch
         {
@@ -311,24 +341,36 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
         string configuredClient = UserSettings.Client;
         bool clientConfigured = configuredClient != "Not configured";
         string clientLabel = ClientLabel(configuredClient);
-        bool grasshopperAvailable = probeGrasshopper && PortOpen(UserSettings.GrasshopperPort);
+        GrasshopperSnapshot grasshopper = ReadGrasshopperStatus(probeGrasshopper);
+        bool grasshopperAvailable = grasshopper.Available;
         bool regulationsAvailable = UserSettings.RegulationsAvailable;
 
         if (!bridgeRunning)
             return new StatusSnapshot(
                 bridgeRunning, clientConnected, clientConfigured, clientLabel,
-                grasshopperAvailable, regulationsAvailable, "BRIDGE STOPPED", Red);
+                grasshopperAvailable, regulationsAvailable, grasshopper.DefinitionOpen,
+                grasshopper.DefinitionName, grasshopper.DefinitionPath, "BRIDGE STOPPED", Red);
         if (!clientConfigured)
             return new StatusSnapshot(
                 bridgeRunning, clientConnected, clientConfigured, clientLabel,
-                grasshopperAvailable, regulationsAvailable, "SETUP NEEDED", Red);
+                grasshopperAvailable, regulationsAvailable, grasshopper.DefinitionOpen,
+                grasshopper.DefinitionName, grasshopper.DefinitionPath, "SETUP NEEDED", Red);
         if (!clientConnected)
             return new StatusSnapshot(
                 bridgeRunning, clientConnected, clientConfigured, clientLabel,
-                grasshopperAvailable, regulationsAvailable, $"WAITING FOR {clientLabel.ToUpperInvariant()}", Amber);
+                grasshopperAvailable, regulationsAvailable, grasshopper.DefinitionOpen,
+                grasshopper.DefinitionName, grasshopper.DefinitionPath,
+                $"WAITING FOR {clientLabel.ToUpperInvariant()}", Amber);
+        if (UserSettings.Profile == "grasshopper" && !grasshopperAvailable)
+            return new StatusSnapshot(
+                bridgeRunning, clientConnected, clientConfigured, clientLabel,
+                grasshopperAvailable, regulationsAvailable, grasshopper.DefinitionOpen,
+                grasshopper.DefinitionName, grasshopper.DefinitionPath,
+                "RHINO READY — GH OFFLINE", Amber);
         return new StatusSnapshot(
             bridgeRunning, clientConnected, clientConfigured, clientLabel,
-            grasshopperAvailable, regulationsAvailable, "CONNECTED — READY", Green);
+            grasshopperAvailable, regulationsAvailable, grasshopper.DefinitionOpen,
+            grasshopper.DefinitionName, grasshopper.DefinitionPath, "CONNECTED — READY", Green);
     }
 
     private static string ClientLabel(string configuredClient)
@@ -340,18 +382,114 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
         return configuredClient.Length > 14 ? "AI client" : configuredClient;
     }
 
-    private static bool PortOpen(int port)
+    private static GrasshopperSnapshot ReadGrasshopperStatus(bool probe)
     {
+        if (!probe)
+            return GrasshopperSnapshot.Unavailable;
+
         try
         {
-            using TcpClient client = new();
-            return client.ConnectAsync("127.0.0.1", port).Wait(TimeSpan.FromMilliseconds(75));
+            using HttpResponseMessage response = GrasshopperHealthClient.GetAsync(
+                $"http://127.0.0.1:{UserSettings.GrasshopperPort}/health").GetAwaiter().GetResult();
+            if (!response.IsSuccessStatusCode)
+                return GrasshopperSnapshot.Unavailable;
+            string json = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            using JsonDocument document = JsonDocument.Parse(json);
+            JsonElement root = document.RootElement;
+            if (!root.TryGetProperty("status", out JsonElement status)
+                || status.GetString() != "ok")
+                return GrasshopperSnapshot.Unavailable;
+            bool definitionOpen = root.TryGetProperty("definition_open", out JsonElement open)
+                && open.ValueKind == JsonValueKind.True;
+            string name = root.TryGetProperty("definition_name", out JsonElement definitionName)
+                ? definitionName.GetString() ?? "" : "";
+            string path = root.TryGetProperty("definition_path", out JsonElement definitionPath)
+                ? definitionPath.GetString() ?? "" : "";
+            return new GrasshopperSnapshot(true, definitionOpen, name, path);
         }
         catch
         {
-            return false;
+            return GrasshopperSnapshot.Unavailable;
         }
     }
+
+    private static object[] ReadProjectFiles(StatusSnapshot status)
+    {
+        List<object> files = new();
+        RhinoDoc? rhinoDocument = RhinoDoc.ActiveDoc;
+        string rhinoPath = rhinoDocument?.Path ?? "";
+        if (rhinoDocument is null)
+        {
+            files.Add(ProjectFile(
+                "rhino-model", "Rhino model", "No Rhino document is open.", "",
+                false, "Not open", "neutral"));
+        }
+        else if (string.IsNullOrWhiteSpace(rhinoPath))
+        {
+            files.Add(ProjectFile(
+                "rhino-model", "Rhino model", "The current model has not been saved yet.", "",
+                false, "Unsaved", "warning"));
+        }
+        else
+        {
+            bool exists = File.Exists(rhinoPath);
+            files.Add(ProjectFile(
+                "rhino-model", "Rhino model", rhinoDocument.Name,
+                rhinoPath, exists, exists ? "Found" : "Path missing", exists ? "success" : "danger"));
+        }
+
+        if (!status.GrasshopperAvailable)
+        {
+            files.Add(ProjectFile(
+                "grasshopper-definition", "Grasshopper definition",
+                "The Grasshopper bridge did not start, so its active definition cannot be read.", "",
+                false, "Unavailable", "danger"));
+        }
+        else if (!status.GrasshopperDefinitionOpen)
+        {
+            files.Add(ProjectFile(
+                "grasshopper-definition", "Grasshopper definition",
+                "Grasshopper is open without an active definition.", "",
+                false, "Not open", "neutral"));
+        }
+        else if (string.IsNullOrWhiteSpace(status.GrasshopperDefinitionPath))
+        {
+            files.Add(ProjectFile(
+                "grasshopper-definition", "Grasshopper definition",
+                string.IsNullOrWhiteSpace(status.GrasshopperDefinitionName)
+                    ? "The current definition has not been saved yet."
+                    : status.GrasshopperDefinitionName,
+                "", false, "Unsaved", "warning"));
+        }
+        else
+        {
+            bool exists = File.Exists(status.GrasshopperDefinitionPath);
+            files.Add(ProjectFile(
+                "grasshopper-definition", "Grasshopper definition",
+                status.GrasshopperDefinitionName,
+                status.GrasshopperDefinitionPath, exists,
+                exists ? "Found" : "Path missing", exists ? "success" : "danger"));
+        }
+        return files.ToArray();
+    }
+
+    private static Dictionary<string, object?> ProjectFile(
+        string id,
+        string label,
+        string description,
+        string path,
+        bool exists,
+        string status,
+        string tone) => new()
+    {
+        ["id"] = id,
+        ["label"] = label,
+        ["description"] = description,
+        ["path"] = path,
+        ["exists"] = exists,
+        ["status"] = status,
+        ["tone"] = tone,
+    };
 
     private static void Redraw()
     {
@@ -368,7 +506,8 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
     private sealed class StatusSnapshot
     {
         public static readonly StatusSnapshot Empty = new(
-            false, false, false, "AI setup", false, false, "STARTING", Amber);
+            false, false, false, "AI setup", false, false, false, "", "",
+            "STARTING", Amber);
 
         public StatusSnapshot(
             bool bridgeRunning,
@@ -377,6 +516,9 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
             string clientLabel,
             bool grasshopperAvailable,
             bool regulationsAvailable,
+            bool grasshopperDefinitionOpen,
+            string grasshopperDefinitionName,
+            string grasshopperDefinitionPath,
             string overallText,
             Color overallColor)
         {
@@ -386,6 +528,9 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
             ClientLabel = clientLabel;
             GrasshopperAvailable = grasshopperAvailable;
             RegulationsAvailable = regulationsAvailable;
+            GrasshopperDefinitionOpen = grasshopperDefinitionOpen;
+            GrasshopperDefinitionName = grasshopperDefinitionName;
+            GrasshopperDefinitionPath = grasshopperDefinitionPath;
             OverallText = overallText;
             OverallColor = overallColor;
         }
@@ -396,6 +541,9 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
         public string ClientLabel { get; }
         public bool GrasshopperAvailable { get; }
         public bool RegulationsAvailable { get; }
+        public bool GrasshopperDefinitionOpen { get; }
+        public string GrasshopperDefinitionName { get; }
+        public string GrasshopperDefinitionPath { get; }
         public string OverallText { get; }
         public Color OverallColor { get; }
         public string ClientWaitingText => ClientConfigured ? "waiting" : "not configured";
@@ -407,6 +555,27 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
             && ClientLabel == other.ClientLabel
             && GrasshopperAvailable == other.GrasshopperAvailable
             && RegulationsAvailable == other.RegulationsAvailable
+            && GrasshopperDefinitionOpen == other.GrasshopperDefinitionOpen
+            && GrasshopperDefinitionName == other.GrasshopperDefinitionName
+            && GrasshopperDefinitionPath == other.GrasshopperDefinitionPath
             && OverallText == other.OverallText;
+    }
+
+    private sealed class GrasshopperSnapshot
+    {
+        public static readonly GrasshopperSnapshot Unavailable = new(false, false, "", "");
+
+        public GrasshopperSnapshot(bool available, bool definitionOpen, string definitionName, string definitionPath)
+        {
+            Available = available;
+            DefinitionOpen = definitionOpen;
+            DefinitionName = definitionName;
+            DefinitionPath = definitionPath;
+        }
+
+        public bool Available { get; }
+        public bool DefinitionOpen { get; }
+        public string DefinitionName { get; }
+        public string DefinitionPath { get; }
     }
 }

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using Grasshopper.Kernel;
 using Rhino;
 
 namespace RhinoMCP.Grasshopper;
@@ -64,11 +65,17 @@ internal sealed class GrasshopperBridgeService : IDisposable
         {
             if (context.Request.HttpMethod == "GET" && context.Request.Url?.AbsolutePath == "/health")
             {
+                GH_Document? document = global::Grasshopper.Instances.ActiveCanvas?.Document;
+                string definitionPath = document?.FilePath ?? "";
                 response = new()
                 {
                     ["status"] = "ok",
-                    ["message"] = global::Grasshopper.Instances.ActiveCanvas?.Document is null
+                    ["message"] = document is null
                         ? "Grasshopper is open; no definition is active." : "Grasshopper is ready.",
+                    ["definition_open"] = document is not null,
+                    ["definition_name"] = document?.DisplayName ?? "",
+                    ["definition_path"] = definitionPath,
+                    ["definition_exists"] = File.Exists(definitionPath),
                 };
             }
             else if (context.Request.HttpMethod == "POST" && context.Request.Url?.AbsolutePath == "/command")

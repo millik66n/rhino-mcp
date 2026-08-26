@@ -86,7 +86,7 @@ applicability, amendments, conflicts, and current requirements before constructi
 For managed or silent deployment, the same download supports:
 
 ```powershell
-.\RhinoMCP-Windows-Setup-0.4.2.exe /CLIENT=codex /SILENT
+.\RhinoMCP-Windows-Setup-0.4.3.exe /CLIENT=codex /SILENT
 ```
 
 Valid client values are `codex`, `claude`, and `cursor`. Restart the selected AI
@@ -101,8 +101,21 @@ required. The page shows the live state of:
 
 - **Rhino Bridge** — connected or stopped
 - **Codex / Claude / Cursor** — connected, waiting, or not configured
-- **Grasshopper** — connected or not open
+- **Grasshopper** — connected or unavailable
 - **Regulations** — loaded or not installed
+
+Below the live services, **Project files** shows the exact path of the active
+Rhino model and Grasshopper definition. **Installed files** shows the Rhino
+plug-in, Grasshopper add-on, bundled MCP server, settings, regulatory database,
+AI-client configuration, and installer log with **Found**, **Missing**, or
+**Unsaved** states and a copy-path button.
+
+If Grasshopper does not finish loading, the dashboard shows a **Needs attention**
+diagnostic. It checks common plug-in locations for likely blockers and displays
+their paths without changing or deleting third-party files. A breakpoint saying
+that a component library was built against a newer Grasshopper SDK means that
+add-on must be replaced with a build compatible with the installed Rhino version,
+or disabled before restarting Rhino.
 
 The page refreshes its status once per second. If Rhino closes, the existing tab
 changes to **Rhino is offline** and keeps trying; when Rhino reopens, it reconnects
@@ -121,8 +134,9 @@ active modeling viewport every time Rhino launches. It stays visible without
 taking up side-panel space, follows the active viewport, and appears again on the
 next Rhino launch even if it was hidden during the previous session.
 
-The headline says **CONNECTED — READY**, **WAITING FOR CODEX/CLAUDE/CURSOR**,
-**SETUP NEEDED**, or **BRIDGE STOPPED**. Four live dots show:
+The headline says **CONNECTED — READY**, **RHINO READY — GH OFFLINE**,
+**WAITING FOR CODEX/CLAUDE/CURSOR**, **SETUP NEEDED**, or **BRIDGE STOPPED**.
+Four live dots show:
 
 - **Bridge** — green when Rhino is listening
 - **Codex / Claude / Cursor** — green when the selected AI client is connected

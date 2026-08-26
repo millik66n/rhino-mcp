@@ -224,6 +224,172 @@
       color: var(--quiet);
     }
 
+    .diagnostic-section,
+    .file-section {
+      margin-top: 52px;
+    }
+
+    .section-heading {
+      margin-bottom: 17px;
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: -.025em;
+      font-weight: 650;
+    }
+
+    .section-heading p {
+      max-width: 620px;
+      margin: 0;
+      color: var(--muted);
+      text-align: right;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .issue-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .issue-card {
+      padding: 24px 26px;
+      border: 1px solid var(--warning);
+      border-radius: var(--radius);
+      background: var(--warning-soft);
+    }
+
+    .issue-card[data-tone="danger"] {
+      border-color: #8c3f45;
+      background: var(--danger-soft);
+    }
+
+    .issue-card h3 {
+      margin: 0;
+      color: var(--warning);
+      font-size: 18px;
+      line-height: 1.3;
+    }
+
+    .issue-card[data-tone="danger"] h3 { color: var(--danger); }
+
+    .issue-card p {
+      max-width: 980px;
+      margin: 9px 0 0;
+      color: #d4d9e0;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    .issue-action { font-weight: 650; }
+
+    .file-list {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .file-row {
+      min-height: 104px;
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 128px;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .file-row + .file-row { border-top: 1px solid var(--line); }
+
+    .file-heading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .file-dot {
+      width: 8px;
+      height: 8px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: var(--neutral);
+    }
+
+    .file-row[data-tone="success"] .file-dot { background: var(--success); }
+    .file-row[data-tone="warning"] .file-dot { background: var(--warning); }
+    .file-row[data-tone="danger"] .file-dot { background: var(--danger); }
+
+    .file-heading h3 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.3;
+      font-weight: 650;
+    }
+
+    .file-description {
+      margin: 6px 0 0 18px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .path-line {
+      min-width: 0;
+      margin: 11px 0 0 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .path-line code {
+      min-width: 0;
+      color: #c9d0da;
+      overflow-wrap: anywhere;
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .copy-button {
+      flex: 0 0 auto;
+      padding: 5px 8px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      background: #1a2027;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .copy-button:hover { color: var(--text); border-color: #596474; }
+    .copy-button:focus-visible { outline: 2px solid var(--success); outline-offset: 2px; }
+
+    .file-status {
+      color: var(--neutral);
+      text-align: right;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .file-row[data-tone="success"] .file-status { color: var(--success); }
+    .file-row[data-tone="warning"] .file-status { color: var(--warning); }
+    .file-row[data-tone="danger"] .file-status { color: var(--danger); }
+
+    .empty-row {
+      margin: 0;
+      padding: 24px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
     .footer {
       position: relative;
       margin-top: 58px;
@@ -295,6 +461,7 @@
     body[data-state="stopped"] .polling-note::before,
     body[data-state="setup"] .polling-note::before { background: var(--danger); }
     body[data-state="waiting"] .polling-note::before { background: var(--warning); }
+    body[data-state="attention"] .polling-note::before { background: var(--warning); }
 
     .noscript {
       margin: 24px;
@@ -330,6 +497,10 @@
       .detail:nth-child(3) { border-left: 0; border-top: 1px solid var(--line); }
       .detail:nth-child(4) { border-top: 1px solid var(--line); }
       .footer { align-items: flex-start; flex-direction: column; }
+      .section-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+      .section-heading p { text-align: left; }
+      .file-row { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+      .file-status { margin-left: 18px; text-align: left; }
     }
 
     @media (max-width: 430px) {
@@ -345,6 +516,10 @@
       .detail + .detail { border-left: 0; border-top: 1px solid var(--line); }
       .refresh-button { width: 100%; }
       .polling-note { margin-top: 30px; }
+      .diagnostic-section, .file-section { margin-top: 42px; }
+      .issue-card { padding: 21px 20px; }
+      .file-row { padding: 19px 18px; }
+      .path-line { align-items: flex-start; flex-direction: column; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -428,6 +603,34 @@
       </div>
     </section>
 
+    <section class="diagnostic-section" id="diagnostic-section" aria-labelledby="diagnostic-title" hidden>
+      <div class="section-heading">
+        <h2 id="diagnostic-title">Needs attention</h2>
+        <p>The dashboard reports the likely cause and the safest next action.</p>
+      </div>
+      <div class="issue-list" id="issue-list"></div>
+    </section>
+
+    <section class="file-section" aria-labelledby="project-files-title">
+      <div class="section-heading">
+        <h2 id="project-files-title">Project files</h2>
+        <p>The currently open Rhino model and Grasshopper definition.</p>
+      </div>
+      <div class="file-list" id="project-files">
+        <p class="empty-row">Checking open project files…</p>
+      </div>
+    </section>
+
+    <section class="file-section" aria-labelledby="installed-files-title">
+      <div class="section-heading">
+        <h2 id="installed-files-title">Installed files</h2>
+        <p>Exact local locations for the plug-ins, MCP server, settings, regulations, and logs.</p>
+      </div>
+      <div class="file-list" id="installed-files">
+        <p class="empty-row">Checking the Rhino MCP installation…</p>
+      </div>
+    </section>
+
     <footer class="footer">
       <p>You can close this tab. Run <strong>RhinoMCPDashboard</strong> in Rhino to open it again.</p>
       <button class="refresh-button" id="refresh-button" type="button">
@@ -450,11 +653,19 @@
       const liveState = document.getElementById("live-state");
       const liveLabel = document.getElementById("live-label");
       const pollingNote = document.getElementById("polling-note");
+      const diagnosticSection = document.getElementById("diagnostic-section");
+      const issueList = document.getElementById("issue-list");
+      const projectFiles = document.getElementById("project-files");
+      const installedFiles = document.getElementById("installed-files");
       const serviceIds = ["bridge", "client", "grasshopper", "regulations"];
       let refreshing = false;
+      let issuesSignature = "";
+      let projectFilesSignature = "";
+      let installedFilesSignature = "";
 
       const overallLabels = {
         connected: ["Live connection", "success"],
+        attention: ["Grasshopper needs attention", "warning"],
         waiting: ["Waiting for AI client", "warning"],
         setup: ["Setup needed", "danger"],
         stopped: ["Bridge stopped", "danger"],
@@ -480,6 +691,90 @@
           : "neutral";
       }
 
+      function normalizedTone(value) {
+        return ["success", "warning", "danger", "neutral"].includes(value)
+          ? value
+          : "neutral";
+      }
+
+      function makePathLine(path) {
+        const line = document.createElement("div");
+        line.className = "path-line";
+        const code = document.createElement("code");
+        code.textContent = path;
+        const button = document.createElement("button");
+        button.className = "copy-button";
+        button.type = "button";
+        button.textContent = "Copy path";
+        button.dataset.copyPath = path;
+        button.setAttribute("aria-label", `Copy path for ${path}`);
+        line.append(code, button);
+        return line;
+      }
+
+      function renderFiles(container, files, emptyMessage) {
+        container.replaceChildren();
+        if (!files.length) {
+          const empty = document.createElement("p");
+          empty.className = "empty-row";
+          empty.textContent = emptyMessage;
+          container.append(empty);
+          return;
+        }
+
+        files.forEach(file => {
+          const row = document.createElement("article");
+          row.className = "file-row";
+          row.dataset.tone = normalizedTone(file.tone);
+          const content = document.createElement("div");
+          const heading = document.createElement("div");
+          heading.className = "file-heading";
+          const dot = document.createElement("span");
+          dot.className = "file-dot";
+          dot.setAttribute("aria-hidden", "true");
+          const title = document.createElement("h3");
+          title.textContent = file.label || "File";
+          heading.append(dot, title);
+          const description = document.createElement("p");
+          description.className = "file-description";
+          description.textContent = file.description || "No details available.";
+          content.append(heading, description);
+          if (typeof file.path === "string" && file.path.length) {
+            content.append(makePathLine(file.path));
+          }
+          const status = document.createElement("div");
+          status.className = "file-status";
+          status.textContent = file.status || "Unknown";
+          row.append(content, status);
+          container.append(row);
+        });
+      }
+
+      function renderIssues(issues) {
+        issueList.replaceChildren();
+        diagnosticSection.hidden = issues.length === 0;
+        issues.forEach(issue => {
+          const card = document.createElement("article");
+          card.className = "issue-card";
+          card.dataset.tone = normalizedTone(issue.tone);
+          const title = document.createElement("h3");
+          title.textContent = issue.title || "Connection issue";
+          const message = document.createElement("p");
+          message.textContent = issue.message || "No diagnostic details are available.";
+          card.append(title, message);
+          if (typeof issue.action === "string" && issue.action.length) {
+            const action = document.createElement("p");
+            action.className = "issue-action";
+            action.textContent = `Next: ${issue.action}`;
+            card.append(action);
+          }
+          const paths = Array.isArray(issue.paths) ? issue.paths : [];
+          paths.filter(path => typeof path === "string" && path.length)
+            .forEach(path => card.append(makePathLine(path)));
+          issueList.append(card);
+        });
+      }
+
       function render(payload) {
         const overall = payload && payload.overall ? payload.overall : {};
         const state = overallLabels[overall.state] ? overall.state : "offline";
@@ -501,6 +796,27 @@
         setText("detail-profile", details.profile);
         setText("detail-network", details.network);
         setText("detail-refresh", details.refresh);
+        if (Array.isArray(payload.issues)) {
+          const signature = JSON.stringify(payload.issues);
+          if (signature !== issuesSignature) {
+            issuesSignature = signature;
+            renderIssues(payload.issues);
+          }
+        }
+        if (Array.isArray(payload.project_files)) {
+          const signature = JSON.stringify(payload.project_files);
+          if (signature !== projectFilesSignature) {
+            projectFilesSignature = signature;
+            renderFiles(projectFiles, payload.project_files, "No project files are open.");
+          }
+        }
+        if (Array.isArray(payload.installed_files)) {
+          const signature = JSON.stringify(payload.installed_files);
+          if (signature !== installedFilesSignature) {
+            installedFilesSignature = signature;
+            renderFiles(installedFiles, payload.installed_files, "No installation files were reported.");
+          }
+        }
         pollingNote.textContent = "Polling live connection…";
       }
 
@@ -546,7 +862,36 @@
         }
       }
 
+      async function copyPath(button) {
+        const path = button.dataset.copyPath || "";
+        if (!path) return;
+        const original = button.textContent;
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(path);
+          } else {
+            const input = document.createElement("textarea");
+            input.value = path;
+            input.setAttribute("readonly", "");
+            input.style.position = "fixed";
+            input.style.opacity = "0";
+            document.body.append(input);
+            input.select();
+            document.execCommand("copy");
+            input.remove();
+          }
+          button.textContent = "Copied";
+        } catch (_error) {
+          button.textContent = "Copy failed";
+        }
+        window.setTimeout(() => { button.textContent = original; }, 1400);
+      }
+
       refreshButton.addEventListener("click", () => refresh(true));
+      document.addEventListener("click", event => {
+        const button = event.target.closest("[data-copy-path]");
+        if (button) copyPath(button);
+      });
       document.addEventListener("visibilitychange", () => {
         if (!document.hidden) refresh();
       });
