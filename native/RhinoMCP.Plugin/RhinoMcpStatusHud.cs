@@ -1,5 +1,6 @@
 using System.Drawing;
-using System.Net.Http;
+using System.Net.Sockets;
+using System.Text;
 using System.Text.Json;
 using Rhino;
 using Rhino.Display;
@@ -20,11 +21,6 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
     private static readonly Color Green = Color.FromArgb(255, 52, 190, 116);
     private static readonly Color Amber = Color.FromArgb(255, 235, 168, 55);
     private static readonly Color Red = Color.FromArgb(255, 226, 82, 82);
-    private static readonly HttpClient GrasshopperHealthClient = new()
-    {
-        Timeout = TimeSpan.FromMilliseconds(350),
-    };
-
     private readonly object _sync = new();
     private System.Threading.Timer? _timer;
     private volatile StatusSnapshot _status = StatusSnapshot.Empty;
@@ -389,11 +385,9 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
 
         try
         {
-            using HttpResponseMessage response = GrasshopperHealthClient.GetAsync(
-                $"http://127.0.0.1:{UserSettings.GrasshopperPort}/health").GetAwaiter().GetResult();
-            if (!response.IsSuccessStatusCode)
+            string? json = ReadGrasshopperHealthResponse();
+            if (string.IsNullOrWhiteSpace(json))
                 return GrasshopperSnapshot.Unavailable;
-            string json = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
             using JsonDocument document = JsonDocument.Parse(json);
             JsonElement root = document.RootElement;
             if (!root.TryGetProperty("status", out JsonElement status)
@@ -411,6 +405,80 @@ internal sealed class RhinoMcpStatusHud : DisplayConduit
         {
             return GrasshopperSnapshot.Unavailable;
         }
+    }
+
+    private static string? ReadGrasshopperHealthResponse()
+    {
+        using TcpClient client = new();
+        if (!client.ConnectAsync("127.0.0.1", UserSettings.GrasshopperPort)
+            .Wait(TimeSpan.FromMilliseconds(250)))
+            return null;
+
+        client.NoDelay = true;
+        using NetworkStream stream = client.GetStream();
+        stream.ReadTimeout = 350;
+        stream.WriteTimeout = 350;
+        byte[] request = Encoding.ASCII.GetBytes(
+            "GET /health HTTP/1.1\r\nHost: 127.0.0.1\r\nAccept: application/json\r\n" +
+            "Connection: close\r\n\r\n");
+        stream.Write(request, 0, request.Length);
+
+        byte[] response = new byte[64 * 1024];
+        int length = 0;
+        int headerEnd = -1;
+        int contentLength = -1;
+        while (length < response.Length)
+        {
+            int read = stream.Read(response, length, response.Length - length);
+            if (read == 0)
+                break;
+            length += read;
+            if (headerEnd < 0)
+            {
+                headerEnd = FindHeaderEnd(response, length);
+                if (headerEnd >= 0)
+                {
+                    string header = Encoding.ASCII.GetString(response, 0, headerEnd);
+                    if (!header.StartsWith("HTTP/1.1 200 ", StringComparison.Ordinal)
+                        && !header.StartsWith("HTTP/1.0 200 ", StringComparison.Ordinal))
+                        return null;
+                    contentLength = ContentLength(header);
+                }
+            }
+            if (headerEnd >= 0 && contentLength >= 0
+                && length >= headerEnd + 4 + contentLength)
+                break;
+        }
+
+        if (headerEnd < 0)
+            return null;
+        int bodyStart = headerEnd + 4;
+        int available = Math.Max(0, length - bodyStart);
+        int bodyLength = contentLength >= 0 ? Math.Min(contentLength, available) : available;
+        return Encoding.UTF8.GetString(response, bodyStart, bodyLength);
+    }
+
+    private static int FindHeaderEnd(byte[] bytes, int length)
+    {
+        for (int index = 3; index < length; index++)
+        {
+            if (bytes[index - 3] == '\r' && bytes[index - 2] == '\n'
+                && bytes[index - 1] == '\r' && bytes[index] == '\n')
+                return index - 3;
+        }
+        return -1;
+    }
+
+    private static int ContentLength(string header)
+    {
+        foreach (string line in header.Split(new[] { "\r\n" }, StringSplitOptions.None))
+        {
+            const string prefix = "Content-Length:";
+            if (line.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(line.Substring(prefix.Length).Trim(), out int value))
+                return value;
+        }
+        return -1;
     }
 
     private static object[] ReadProjectFiles(StatusSnapshot status)
