@@ -26,6 +26,10 @@ if (Test-Path -LiteralPath $yakPath -PathType Leaf) {
     & $yakPath uninstall "Rhino-MCP-Easy"
 }
 
+if (Get-Command Unregister-RhinoMcpPlugin -ErrorAction SilentlyContinue) {
+    Unregister-RhinoMcpPlugin
+}
+
 if (Get-Command Remove-RhinoMcpPackageVersions -ErrorAction SilentlyContinue) {
     Remove-RhinoMcpPackageVersions
 }

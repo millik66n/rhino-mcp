@@ -18,21 +18,45 @@ public sealed class RhinoMcpPlugin : PlugIn
 
     protected override LoadReturnCode OnLoad(ref string errorMessage)
     {
-        SceneChangeTracker.Start();
-        RhinoBridgeService.Instance.Start(UserSettings.RhinoPort);
-        Dashboard.Start(UserSettings.DashboardPort);
+        BridgeLog.Write("Rhino MCP plug-in loaded; starting local services.");
+        StartSafely("scene tracking", SceneChangeTracker.Start);
+        StartSafely("Rhino bridge", () =>
+        {
+            RhinoBridgeService.Instance.Start(UserSettings.RhinoPort);
+        });
+        StartSafely("connection dashboard", () =>
+        {
+            Dashboard.Start(UserSettings.DashboardPort);
+        });
         _ = Task.Run(RhinoMcpInstallationDiagnostics.RefreshCompatibilityScan);
-        BridgeLog.Write("Rhino bridge started automatically.");
+        BridgeLog.Write(RhinoBridgeService.Instance.Running
+            ? "Rhino bridge started automatically."
+            : "Rhino bridge is stopped; RhinoMCPRestart remains available for recovery.");
         RhinoApp.Idle += ShowStatusOnStartup;
         return LoadReturnCode.Success;
+    }
+
+    private static void StartSafely(string component, Action start)
+    {
+        try
+        {
+            start();
+        }
+        catch (Exception exception)
+        {
+            BridgeLog.Write($"Could not start {component}: {exception.Message}");
+        }
     }
 
     private void ShowStatusOnStartup(object? sender, EventArgs args)
     {
         RhinoApp.Idle -= ShowStatusOnStartup;
-        StatusHud.Start();
-        Dashboard.OpenBrowser();
-        _ = ClientLauncher.OpenConfiguredCodexAsync(automatic: true);
+        StartSafely("connection strip", () => { StatusHud.Start(); });
+        StartSafely("browser dashboard", () => { Dashboard.OpenBrowser(); });
+        StartSafely("Codex launcher", () =>
+        {
+            _ = ClientLauncher.OpenConfiguredCodexAsync(automatic: true);
+        });
     }
 
     protected override void OnShutdown()

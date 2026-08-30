@@ -1,3 +1,7 @@
+Set-StrictMode -Version Latest
+
+$script:RhinoMcpPluginId = "0E59A34D-7906-45DC-B8A1-B1D8219A841E"
+
 function Get-RhinoMcpPackageRoot {
     [CmdletBinding()]
     param(
@@ -17,6 +21,189 @@ function Get-RhinoMcpPackageRoot {
     }
 
     return $packageRoot
+}
+
+function Test-RhinoMcpChildPath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$ChildPath,
+        [Parameter(Mandatory = $true)][string]$ParentPath
+    )
+
+    $child = [IO.Path]::GetFullPath($ChildPath)
+    $trimCharacters = [char[]]@(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar
+    )
+    $parent = [IO.Path]::GetFullPath($ParentPath).TrimEnd($trimCharacters) +
+        [IO.Path]::DirectorySeparatorChar
+    return $child.StartsWith($parent, [StringComparison]::OrdinalIgnoreCase)
+}
+
+function Get-RhinoMcpRuntime {
+    [CmdletBinding()]
+    param(
+        [string]$RuntimeSettingsPath =
+            "HKCU:\Software\McNeel\Rhinoceros\8.0\Global Options"
+    )
+
+    $runtime = ""
+    if (Test-Path -LiteralPath $RuntimeSettingsPath) {
+        $settings = Get-ItemProperty -LiteralPath $RuntimeSettingsPath -ErrorAction SilentlyContinue
+        $runtimeProperty = if ($null -ne $settings) {
+            $settings.PSObject.Properties["DotNetRuntime"]
+        } else {
+            $null
+        }
+        if ($null -ne $runtimeProperty -and $null -ne $runtimeProperty.Value) {
+            $runtime = $runtimeProperty.Value.ToString().Trim().ToLowerInvariant()
+        }
+    }
+
+    if ($runtime -eq "netfx" -or $runtime -like "*framework*") {
+        return "net48"
+    }
+    return "net7.0"
+}
+
+function Get-RhinoMcpPluginPath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$Version,
+        [ValidateSet("net48", "net7.0")][string]$Runtime,
+        [string]$RoamingAppData = $env:APPDATA,
+        [string]$RuntimeSettingsPath =
+            "HKCU:\Software\McNeel\Rhinoceros\8.0\Global Options"
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Runtime)) {
+        $Runtime = Get-RhinoMcpRuntime -RuntimeSettingsPath $RuntimeSettingsPath
+    }
+
+    $packageRoot = Get-RhinoMcpPackageRoot -RoamingAppData $RoamingAppData
+    $versionRoot = [IO.Path]::GetFullPath((Join-Path $packageRoot $Version))
+    $pluginPath = [IO.Path]::GetFullPath(
+        (Join-Path $versionRoot "$Runtime\RhinoMCP.rhp")
+    )
+    if (-not (Test-RhinoMcpChildPath -ChildPath $pluginPath -ParentPath $versionRoot)) {
+        throw "Rhino MCP plug-in registration resolved outside its version folder."
+    }
+    if (-not (Test-Path -LiteralPath $pluginPath -PathType Leaf)) {
+        throw "The Rhino MCP $Runtime plug-in is missing: $pluginPath"
+    }
+    return $pluginPath
+}
+
+function Clear-RhinoMcpPluginLoadCache {
+    [CmdletBinding()]
+    param(
+        [string]$RegistryVersionRoot = "HKCU:\Software\McNeel\Rhinoceros\8.0"
+    )
+
+    if (-not (Test-Path -LiteralPath $RegistryVersionRoot)) {
+        return
+    }
+
+    foreach ($versionKey in Get-ChildItem -LiteralPath $RegistryVersionRoot) {
+        if ($versionKey.PSChildName -in @("Plug-ins", "Global Options")) {
+            continue
+        }
+        $cachedPlugin = Join-Path $versionKey.PSPath "Plug-ins\$script:RhinoMcpPluginId"
+        if (Test-Path -LiteralPath $cachedPlugin) {
+            Write-Host "Clearing stale Rhino MCP discovery cache: $($versionKey.PSChildName)"
+            Remove-Item -LiteralPath $cachedPlugin -Recurse -Force
+        }
+    }
+}
+
+function Register-RhinoMcpPlugin {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$Version,
+        [string]$RoamingAppData = $env:APPDATA,
+        [string]$RegistryVersionRoot = "HKCU:\Software\McNeel\Rhinoceros\8.0",
+        [string]$RuntimeSettingsPath =
+            "HKCU:\Software\McNeel\Rhinoceros\8.0\Global Options"
+    )
+
+    $runtime = Get-RhinoMcpRuntime -RuntimeSettingsPath $RuntimeSettingsPath
+    $pluginPath = Get-RhinoMcpPluginPath `
+        -Version $Version `
+        -Runtime $runtime `
+        -RoamingAppData $RoamingAppData `
+        -RuntimeSettingsPath $RuntimeSettingsPath
+    $versionRoot = Split-Path -Parent (Split-Path -Parent $pluginPath)
+
+    Write-Host "Unblocking the installed Rhino MCP plug-in files..."
+    Get-ChildItem -LiteralPath $versionRoot -Recurse -File | ForEach-Object {
+        Unblock-File -LiteralPath $_.FullName -ErrorAction Stop
+    }
+
+    Clear-RhinoMcpPluginLoadCache -RegistryVersionRoot $RegistryVersionRoot
+
+    $registrationRoot = Join-Path $RegistryVersionRoot "Plug-ins"
+    $registrationPath = Join-Path $registrationRoot $script:RhinoMcpPluginId
+    if (Test-Path -LiteralPath $registrationPath) {
+        Remove-Item -LiteralPath $registrationPath -Recurse -Force
+    }
+    New-Item -Path $registrationRoot -Force | Out-Null
+    New-Item -Path $registrationPath -Force | Out-Null
+    New-ItemProperty `
+        -LiteralPath $registrationPath `
+        -Name "Name" `
+        -Value "Rhino MCP" `
+        -PropertyType String `
+        -Force | Out-Null
+    New-ItemProperty `
+        -LiteralPath $registrationPath `
+        -Name "FileName" `
+        -Value $pluginPath `
+        -PropertyType String `
+        -Force | Out-Null
+    New-ItemProperty `
+        -LiteralPath $registrationPath `
+        -Name "LoadMode" `
+        -Value 1 `
+        -PropertyType DWord `
+        -Force | Out-Null
+
+    $registration = Get-ItemProperty -LiteralPath $registrationPath
+    if ($registration.Name -ne "Rhino MCP" -or
+        $registration.FileName -ne $pluginPath -or
+        [int]$registration.LoadMode -ne 1) {
+        throw "Rhino MCP plug-in registration verification failed: $registrationPath"
+    }
+
+    Write-Host "Registered Rhino MCP for automatic startup: $pluginPath"
+}
+
+function Unregister-RhinoMcpPlugin {
+    [CmdletBinding()]
+    param(
+        [string]$RoamingAppData = $env:APPDATA,
+        [string]$RegistryVersionRoot = "HKCU:\Software\McNeel\Rhinoceros\8.0"
+    )
+
+    $registrationPath = Join-Path `
+        (Join-Path $RegistryVersionRoot "Plug-ins") `
+        $script:RhinoMcpPluginId
+    if (Test-Path -LiteralPath $registrationPath) {
+        $registration = Get-ItemProperty -LiteralPath $registrationPath
+        $fileNameProperty = $registration.PSObject.Properties["FileName"]
+        $fileName = if ($null -ne $fileNameProperty -and $null -ne $fileNameProperty.Value) {
+            $fileNameProperty.Value.ToString()
+        } else {
+            ""
+        }
+        $packageRoot = Get-RhinoMcpPackageRoot -RoamingAppData $RoamingAppData
+        if (-not [string]::IsNullOrWhiteSpace($fileName) -and
+            (Test-RhinoMcpChildPath -ChildPath $fileName -ParentPath $packageRoot)) {
+            Remove-Item -LiteralPath $registrationPath -Recurse -Force
+            Write-Host "Removed Rhino MCP plug-in registration."
+        }
+    }
+
+    Clear-RhinoMcpPluginLoadCache -RegistryVersionRoot $RegistryVersionRoot
 }
 
 function Remove-RhinoMcpPackageVersions {

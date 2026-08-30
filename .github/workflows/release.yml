@@ -22,6 +22,7 @@ jobs:
       - run: python -m build
       - run: twine check dist/*.whl dist/*.tar.gz
       - run: choco install innosetup --yes --no-progress
+      - run: ./tests/test-windows-package-upgrade.ps1
       - run: ./scripts/build-windows-installer.ps1
       - run: |
           $installer = Get-Item "dist/RhinoMCP-Windows-Setup-*.exe"

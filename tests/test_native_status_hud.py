@@ -13,6 +13,16 @@ def test_rhino_status_strip_appears_on_every_app_launch():
     assert not (ROOT / "native" / "RhinoMCP.Plugin" / "RhinoMcpPanel.cs").exists()
 
 
+def test_plugin_keeps_recovery_commands_available_when_a_service_fails():
+    plugin = (ROOT / "native" / "RhinoMCP.Plugin" / "RhinoMcpPlugin.cs").read_text()
+
+    assert 'StartSafely("scene tracking"' in plugin
+    assert 'StartSafely("Rhino bridge"' in plugin
+    assert 'StartSafely("connection dashboard"' in plugin
+    assert "RhinoMCPRestart remains available for recovery." in plugin
+    assert "return LoadReturnCode.Success;" in plugin
+
+
 def test_status_strip_is_drawn_only_in_the_active_modeling_view():
     hud = (ROOT / "native" / "RhinoMCP.Plugin" / "RhinoMcpStatusHud.cs").read_text()
 

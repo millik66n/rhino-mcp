@@ -73,6 +73,7 @@ try {
     Write-Host "Installing the Rhino and Grasshopper bridges..."
     Invoke-Checked -FilePath $yakPath -Arguments @("install", $package.FullName)
     Assert-RhinoMcpPackageInstalled -Version $Version
+    Register-RhinoMcpPlugin -Version $Version
 
     Write-Host "Configuring $Client with the $Profile profile..."
     Invoke-Checked -FilePath $serverPath -Arguments @(

@@ -19,6 +19,8 @@ from .grasshopper import GrasshopperConnection
 from .protocol import BridgeConnection, BridgeEndpoint, BridgeError
 from .regulations import RegulationLibrary
 
+RHINO_MCP_PLUGIN_ID = "0E59A34D-7906-45DC-B8A1-B1D8219A841E"
+
 
 @dataclass(slots=True)
 class Check:
@@ -50,6 +52,36 @@ def _native_plugin() -> Path | None:
         return next(root.rglob("RhinoMCP.rhp"), None)
     except OSError:
         return None
+
+
+def _windows_plugin_registration() -> tuple[bool, str]:
+    if os.name != "nt":
+        return True, "not required on this platform"
+
+    import winreg
+
+    subkey = rf"Software\McNeel\Rhinoceros\8.0\Plug-ins\{RHINO_MCP_PLUGIN_ID}"
+    access = winreg.KEY_READ | winreg.KEY_WOW64_64KEY
+    registry_hives = (
+        (winreg.HKEY_CURRENT_USER, "current user"),
+        (winreg.HKEY_LOCAL_MACHINE, "computer"),
+    )
+    for hive, label in registry_hives:
+        try:
+            with winreg.OpenKey(hive, subkey, 0, access) as key:
+                name = str(winreg.QueryValueEx(key, "Name")[0])
+                filename = Path(str(winreg.QueryValueEx(key, "FileName")[0]))
+                load_mode = int(winreg.QueryValueEx(key, "LoadMode")[0])
+        except (FileNotFoundError, OSError, ValueError):
+            continue
+
+        package_path = any(part.lower() == "rhino-mcp-easy" for part in filename.parts)
+        valid = name == "Rhino MCP" and filename.is_file() and package_path and load_mode == 1
+        if valid:
+            return True, f"{label}: {filename}"
+        return False, f"invalid {label} registration: {filename}"
+
+    return False, "installer repair required; Rhino MCP is not registered with Rhino 8"
 
 
 def run_doctor(settings: Settings | None = None) -> list[Check]:
@@ -135,6 +167,16 @@ def run_doctor(settings: Settings | None = None) -> list[Check]:
             True,
         )
     )
+    if os.name == "nt":
+        registered, registration_message = _windows_plugin_registration()
+        checks.append(
+            Check(
+                "Rhino registration",
+                "pass" if registered else "fail",
+                registration_message,
+                True,
+            )
+        )
 
     rhino = BridgeConnection(
         BridgeEndpoint(
