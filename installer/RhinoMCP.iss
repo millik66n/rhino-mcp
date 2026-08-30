@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.4.5"
+  #define AppVersion "0.4.6"
 #endif
 
 #ifndef PayloadDir
@@ -43,7 +43,12 @@ Source: "{#PayloadDir}\rhino-mcp\*"; DestDir: "{app}\server"; Flags: ignoreversi
 Source: "{#PayloadDir}\*.yak"; DestDir: "{app}\payload"; Flags: ignoreversion
 Source: "Install-RhinoMCP.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Uninstall-RhinoMCP.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "RhinoMcpPackage.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion; AfterInstall: InstallRuntime
+
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\server"
+Type: filesandordirs; Name: "{app}\payload"
 
 [Run]
 Filename: "{code:GetRhinoExe}"; Description: "Open Rhino 8 now"; Flags: nowait postinstall skipifsilent
@@ -148,7 +153,8 @@ begin
   PowerShell := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
   Parameters := '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' +
     ExpandConstant('{app}\Install-RhinoMCP.ps1') + '" -AppDir "' + ExpandConstant('{app}') +
-    '" -Client "' + GetSelectedClient('') + '" -Profile "grasshopper"';
+    '" -Client "' + GetSelectedClient('') + '" -Profile "grasshopper" -Version "' +
+    '{#AppVersion}' + '"';
 
   if (not Exec(PowerShell, Parameters, '', SW_HIDE, ewWaitUntilTerminated, ResultCode)) or
      (ResultCode <> 0) then

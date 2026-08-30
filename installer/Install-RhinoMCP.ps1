@@ -9,11 +9,16 @@ param(
     [string]$Profile,
 
     [Parameter(Mandatory = $true)]
-    [string]$AppDir
+    [string]$AppDir,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Version
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+. (Join-Path $PSScriptRoot "RhinoMcpPackage.ps1")
 
 function Invoke-Checked {
     param(
@@ -58,8 +63,16 @@ try {
         throw "The installer is missing its bundled MCP server."
     }
 
+    Write-Host "Removing previous Rhino MCP plug-in versions..."
+    & $yakPath uninstall "Rhino-MCP-Easy"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "No active Rhino MCP package was registered; checking for stale files."
+    }
+    Remove-RhinoMcpPackageVersions
+
     Write-Host "Installing the Rhino and Grasshopper bridges..."
     Invoke-Checked -FilePath $yakPath -Arguments @("install", $package.FullName)
+    Assert-RhinoMcpPackageInstalled -Version $Version
 
     Write-Host "Configuring $Client with the $Profile profile..."
     Invoke-Checked -FilePath $serverPath -Arguments @(
@@ -80,6 +93,7 @@ try {
         installed_at = [DateTime]::UtcNow.ToString("o")
         client = $Client
         profile = $Profile
+        version = $Version
         server = $serverPath
     } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $AppDir "installed.json") -Encoding UTF8
 

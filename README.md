@@ -22,6 +22,7 @@ single `RhinoMCP-Windows-Setup-*.exe` file from the
 double-click it. The installer asks for the AI client and then automatically:
 
 - installs the Rhino and Grasshopper bridges using Rhino's bundled installer;
+- removes every older `Rhino-MCP-Easy` package version before installing the new one;
 - installs a self-contained MCP server with its complete runtime;
 - writes the Codex, Claude, or Cursor MCP entry safely;
 - installs the Codex `$rhino-mcp` workflow and `/RhinoMCP` routing guidance;
@@ -32,7 +33,11 @@ double-click it. The installer asks for the AI client and then automatically:
 The installer does not need Rhino to be online, does not download dependencies,
 and Rhino MCP never updates itself.
 Installing a different version always requires deliberately running another
-installer.
+installer. Running that installer performs a clean in-place replacement: it removes
+only Rhino MCP's old package versions and bundled server files, installs the selected
+version, and verifies that Rhino's active `manifest.txt` and both plug-in runtimes
+match it. Rhino models, unrelated plug-ins, and other application files are not
+touched.
 
 When Rhino starts, it automatically opens a local connection dashboard in Google
 Chrome when Chrome is available, falling back to the Windows default browser. It
@@ -96,7 +101,7 @@ applicability, amendments, conflicts, and current requirements before constructi
 For managed or silent deployment, the same download supports:
 
 ```powershell
-.\RhinoMCP-Windows-Setup-0.4.5.exe /CLIENT=codex /SILENT
+.\RhinoMCP-Windows-Setup-0.4.6.exe /CLIENT=codex /SILENT
 ```
 
 Valid client values are `codex`, `claude`, and `cursor`. For Codex, type a request
